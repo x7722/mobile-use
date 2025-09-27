@@ -34,6 +34,11 @@ class PercentagesSelectorRequest(BaseModel):
     def to_str(self):
         return f"{self.x_percent}%, {self.y_percent}%"
 
+    def to_coords(self, width: int, height: int):
+        x = int(round(((width - 1) * self.x_percent) / 100.0))
+        y = int(round(((height - 1) * self.y_percent) / 100.0))
+        return CoordinatesSelectorRequest(x=x, y=y)
+
 
 class IdSelectorRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -106,6 +111,12 @@ class SwipeStartEndPercentagesRequest(BaseModel):
 
     def to_dict(self):
         return {"start": self.start.to_str(), "end": self.end.to_str()}
+
+    def to_coords(self, width: int, height: int):
+        return SwipeStartEndCoordinatesRequest(
+            start=self.start.to_coords(width, height),
+            end=self.end.to_coords(width, height),
+        )
 
 
 SwipeDirection = Annotated[
