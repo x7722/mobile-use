@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Annotated, Literal
 
 import yaml
+from adbutils import AdbClient
 from langgraph.types import Command
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 from requests import JSONDecodeError
@@ -239,7 +240,52 @@ def swipe(ctx: MobileUseContext, swipe_request: SwipeRequest, dry_run: bool = Fa
 ##### Text related commands #####
 
 
+def _escape_text_for_adb(text: str) -> str:
+    processed = text.replace(" ", "%s")
+    processed = processed.replace("'", "'\\''")
+    return processed
+
+
 def input_text(ctx: MobileUseContext, text: str, dry_run: bool = False):
+    """
+    Inputs text on the device, correctly handling special characters like newlines and tabs.
+    Prioritizes direct ADB commands for performance and falls back to Maestro.
+    """
+    if dry_run:
+        logger.info(f"[DRY RUN] Would have inputted complex text: '{text}'")
+        return None
+
+    if ctx.adb_client:
+        try:
+            logger.info(f"Inputting complex text via direct ADB: '{text}'")
+
+            lines = text.split("\n")
+
+            for i, line in enumerate(lines):
+                segments = line.split("\t")
+
+                for j, segment in enumerate(segments):
+                    if segment:
+                        processed_segment = _escape_text_for_adb(segment)
+                        ctx.adb_client.shell(
+                            command=f"input text '{processed_segment}'", serial=ctx.device.device_id
+                        )
+
+                    if j < len(segments) - 1:
+                        ctx.adb_client.shell(
+                            command="input keyevent 61", serial=ctx.device.device_id
+                        )
+
+                if i < len(lines) - 1:
+                    ctx.adb_client.shell(command="input keyevent 66", serial=ctx.device.device_id)
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Direct ADB input text command failed: {e}")
+            return {"status_code": 500, "body": f"ADB command failed: {e}"}
+
+    logger.info("ADB client not configured, falling back to Maestro for input text.")
     return run_flow(ctx, [{"inputText": text}], dry_run=dry_run)
 
 
@@ -248,6 +294,14 @@ def erase_text(ctx: MobileUseContext, nb_chars: int | None = None, dry_run: bool
     Removes characters from the currently selected textfield (if any)
     Removes 50 characters if nb_chars is not specified.
     """
+    adb_client = ctx.adb_client
+    if adb_client:
+        logger.info("Erasing text with adb")
+        chars_to_delete = nb_chars if nb_chars is not None else 50
+        for _ in range(chars_to_delete):
+            adb_client.shell(command="input keyevent KEYCODE_DEL", serial=ctx.device.device_id)
+        return
+
     if nb_chars is None:
         return run_flow(ctx, ["eraseText"], dry_run=dry_run)
     return run_flow(ctx, [{"eraseText": nb_chars}], dry_run=dry_run)
@@ -257,6 +311,15 @@ def erase_text(ctx: MobileUseContext, nb_chars: int | None = None, dry_run: bool
 
 
 def launch_app(ctx: MobileUseContext, package_name: str, dry_run: bool = False):
+    adb_client = ctx.adb_client
+    if adb_client:
+        logger.info("Launching app with adb")
+        adb_client.shell(
+            command=f"monkey -p {package_name} -c android.intent.category.LAUNCHER 1",
+            serial=ctx.device.device_id,
+        )
+        return
+
     flow_input = [{"launchApp": package_name}]
     return run_flow_with_wait_for_animation_to_end(
         ctx, flow_input, dry_run=dry_run, wait_for_animation_to_end=True
@@ -264,6 +327,26 @@ def launch_app(ctx: MobileUseContext, package_name: str, dry_run: bool = False):
 
 
 def stop_app(ctx: MobileUseContext, package_name: str | None = None, dry_run: bool = False):
+    adb_client = ctx.adb_client
+    if adb_client:
+        if package_name is None:
+            current_focus = str(
+                adb_client.shell(
+                    command="dumpsys window | grep -E 'mCurrentFocus'",
+                    serial=ctx.device.device_id,
+                )
+            )
+            current_app_package_name = current_focus.split(" ")[-1].split("/")[0]
+            logger.info(f"Stopping current app `{current_app_package_name}` with adb")
+            adb_client.shell(
+                command=f"am force-stop {current_app_package_name}",
+                serial=ctx.device.device_id,
+            )
+            return
+        logger.info(f"Stopping app `{package_name}` with adb")
+        adb_client.shell(command=f"am force-stop {package_name}", serial=ctx.device.device_id)
+        return
+
     if package_name is None:
         flow_input = ["stopApp"]
     else:
@@ -276,6 +359,14 @@ def stop_app(ctx: MobileUseContext, package_name: str | None = None, dry_run: bo
 
 
 def open_link(ctx: MobileUseContext, url: str, dry_run: bool = False):
+    adb_client = ctx.adb_client
+    if adb_client:
+        logger.info("Opening link with adb")
+        adb_client.shell(
+            command=f"am start -a android.intent.action.VIEW -d {url}", serial=ctx.device.device_id
+        )
+        return
+
     flow_input = [{"openLink": url}]
     return run_flow_with_wait_for_animation_to_end(
         ctx, flow_input, dry_run=dry_run, wait_for_animation_to_end=True
@@ -286,6 +377,12 @@ def open_link(ctx: MobileUseContext, url: str, dry_run: bool = False):
 
 
 def back(ctx: MobileUseContext, dry_run: bool = False):
+    adb_client = ctx.adb_client
+    if adb_client:
+        logger.info("Pressing back with adb")
+        adb_client.shell(command="input keyevent KEYCODE_BACK", serial=ctx.device.device_id)
+        return
+
     flow_input = ["back"]
     return run_flow_with_wait_for_animation_to_end(
         ctx, flow_input, dry_run=dry_run, wait_for_animation_to_end=True
@@ -299,6 +396,15 @@ class Key(Enum):
 
 
 def press_key(ctx: MobileUseContext, key: Key, dry_run: bool = False):
+    adb_client = ctx.adb_client
+    if adb_client:
+        logger.info(f"Pressing key {key.value} with adb")
+        key_mapping = {"Home": "KEYCODE_HOME", "Back": "KEYCODE_BACK", "Enter": "KEYCODE_ENTER"}
+        keycode = key_mapping.get(key.value)
+        if keycode:
+            adb_client.shell(command=f"input keyevent {keycode}", serial=ctx.device.device_id)
+            return
+
     flow_input = [{"pressKey": key.value}]
     return run_flow_with_wait_for_animation_to_end(ctx, flow_input, dry_run=dry_run)
 
@@ -332,29 +438,31 @@ def run_flow_with_wait_for_animation_to_end(
 
 
 if __name__ == "__main__":
+    adb_client = AdbClient(host="127.0.0.1", port=5037)
     ctx = MobileUseContext(
         llm_config=initialize_llm_config(),
         device=DeviceContext(
             host_platform="WINDOWS",
             mobile_platform=DevicePlatform.ANDROID,
-            device_id="emulator-5554",
+            device_id="f67a5c8b",
             device_width=1080,
             device_height=1920,
         ),
         hw_bridge_client=DeviceHardwareClient("http://localhost:9999"),
         screen_api_client=ScreenApiClient("http://localhost:9998"),
+        adb_client=adb_client,
     )
     screen_data = get_screen_data(ctx.screen_api_client)
     from minitap.mobile_use.graph.state import State
 
     dummy_state = State(
-        latest_ui_hierarchy=screen_data.elements,
         messages=[],
         initial_goal="",
         subgoal_plan=[],
         focused_app_info=None,
         device_date="",
         structured_decisions=None,
+        latest_ui_hierarchy=None,
         complete_subgoals_by_ids=[],
         executor_messages=[],
         cortex_last_thought="",
@@ -374,16 +482,93 @@ if __name__ == "__main__":
     #         "executor_metadata": None,
     #     }
     # )
-    from minitap.mobile_use.tools.mobile.clear_text import get_clear_text_tool
+    # from minitap.mobile_use.tools.mobile.clear_text import get_clear_text_tool
 
-    input_resource_id = "com.google.android.apps.nexuslauncher:id/input"
-    command_output: Command = get_clear_text_tool(ctx=ctx).invoke(
+    # input_resource_id = "com.google.android.apps.nexuslauncher:id/input"
+    # tool = get_clear_text_tool(ctx=ctx)
+    # command_output: Command = tool.invoke(
+    #     {
+    #         "name": tool.name,
+    #         "type": "tool_call",
+    #         "id": uuid.uuid4().hex,
+    #         "args": {
+    #             "agent_thought": "",
+    #             "target": {
+    #                 "resource_id": None,
+    #                 "resource_id_index": None,
+    #                 "text": None,
+    #                 "text_index": None,
+    #                 "coordinates": None,
+    #             },
+    #             "state": dummy_state,
+    #         },
+    #     }
+    # )
+    # from minitap.mobile_use.tools.mobile.launch_app import get_launch_app_tool
+
+    # tool = get_launch_app_tool(ctx=ctx)
+    # command_output: Command = asyncio.run(
+    #     tool.ainvoke(
+    #         {
+    #             "name": tool.name,
+    #             "type": "tool_call",
+    #             "id": uuid.uuid4().hex,
+    #             "args": {
+    #                 "agent_thought": "",
+    #                 "app_name": "google keep",
+    #                 "state": dummy_state,
+    #             },
+    #         }
+    #     )
+    # )
+
+    # from minitap.mobile_use.tools.mobile.stop_app import get_stop_app_tool
+
+    # tool = get_stop_app_tool(ctx=ctx)
+    # command_output: Command = asyncio.run(
+    #     tool.ainvoke(
+    #         {
+    #             "name": tool.name,
+    #             "type": "tool_call",
+    #             "id": uuid.uuid4().hex,
+    #             "args": {
+    #                 "agent_thought": "",
+    #                 "app_name": "google keep",
+    #                 "state": dummy_state,
+    #             },
+    #         }
+    #     )
+    # )
+
+    # from minitap.mobile_use.tools.mobile.back import get_back_tool
+
+    # tool = get_back_tool(ctx=ctx)
+    # command_output: Command = tool.invoke(
+    #     {
+    #         "name": tool.name,
+    #         "type": "tool_call",
+    #         "id": uuid.uuid4().hex,
+    #         "args": {
+    #             "agent_thought": "",
+    #             "state": dummy_state,
+    #         },
+    #     }
+    # )
+
+    # press key
+    from minitap.mobile_use.tools.mobile.press_key import get_press_key_tool
+
+    tool = get_press_key_tool(ctx=ctx)
+    command_output: Command = tool.invoke(
         {
-            "tool_call_id": uuid.uuid4().hex,
-            "agent_thought": "",
-            "text_input_resource_id": input_resource_id,
-            "state": dummy_state,
-            "executor_metadata": None,
+            "name": tool.name,
+            "type": "tool_call",
+            "id": uuid.uuid4().hex,
+            "args": {
+                "agent_thought": "",
+                "key": "Enter",
+                "state": dummy_state,
+            },
         }
     )
     print(command_output)
