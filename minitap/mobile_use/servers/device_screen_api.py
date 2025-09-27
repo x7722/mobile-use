@@ -3,14 +3,16 @@ import json
 import threading
 import time
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 import requests
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
+from sseclient import SSEClient
+
 from minitap.mobile_use.servers.config import server_settings
 from minitap.mobile_use.servers.utils import is_port_in_use
-from sseclient import SSEClient
 
 DEVICE_HARDWARE_BRIDGE_BASE_URL = server_settings.DEVICE_HARDWARE_BRIDGE_BASE_URL
 DEVICE_HARDWARE_BRIDGE_API_URL = f"{DEVICE_HARDWARE_BRIDGE_BASE_URL}/api"
@@ -19,10 +21,11 @@ _latest_screen_data = None
 _data_lock = threading.Lock()
 _stream_thread = None
 _stop_event = threading.Event()
+_latest_screen_ts = None
 
 
 def _stream_worker():
-    global _latest_screen_data
+    global _latest_screen_data, _latest_screen_ts
     sse_url = f"{DEVICE_HARDWARE_BRIDGE_API_URL}/device-screen/sse"
     headers = {"Accept": "text/event-stream"}
 
@@ -58,6 +61,7 @@ def _stream_worker():
                                 "height": height,
                                 "platform": platform,
                             }
+                            _latest_screen_ts = datetime.now(UTC)
 
         except requests.exceptions.RequestException as e:
             print(f"Connection error in stream worker: {e}. Retrying in 2 seconds...")
@@ -113,6 +117,9 @@ def get_latest_data():
 
 @app.get("/screen-info")
 async def get_screen_info():
+    now = datetime.now(UTC)
+    while not _latest_screen_ts or _latest_screen_ts < now:
+        time.sleep(0.05)
     data = get_latest_data()
     return JSONResponse(content=data)
 
