@@ -86,17 +86,18 @@ def run_flow(ctx: MobileUseContext, flow_steps: list, dry_run: bool = False) -> 
 def _android_tap_by_coordinates(
     ctx: MobileUseContext,
     coords: CoordinatesSelectorRequest,
+    long_press: bool = False,
 ) -> TapOutput:
     assert ctx.adb_client is not None
 
     error: dict | None = None
+    cmd = f"input tap {coords.x} {coords.y}"
+    if long_press:
+        cmd = f"input swipe {coords.x} {coords.y} {coords.x} {coords.y} 1000"
+    logger.info(cmd)
 
     try:
-        ctx.adb_client.shell(
-            serial=ctx.device.device_id,
-            command=f"input tap {coords.x} {coords.y}",
-        )
-
+        ctx.adb_client.shell(serial=ctx.device.device_id, command=cmd)
     except Exception as e:
         logger.warning(f"Exception during tap with coordinates '{coords.to_str()}': {e}")
         error = {"error": str(e)}
@@ -147,6 +148,7 @@ def _android_tap_by_resource_id_or_text(
     resource_id: str | None = None,
     text: str | None = None,
     index: int | None = None,
+    long_press: bool = False,
 ) -> TapOutput:
     assert ctx.adb_client is not None
 
@@ -166,10 +168,10 @@ def _android_tap_by_resource_id_or_text(
         bounds = get_bounds_for_element(ui_element)
         if bounds:
             center = bounds.get_center()
-            ctx.adb_client.shell(
-                serial=ctx.device.device_id,
-                command=f"input tap {center.x} {center.y}",
-            )
+            cmd = f"input tap {center.x} {center.y}"
+            if long_press:
+                cmd = f"input swipe {center.x} {center.y} {center.x} {center.y} 1000"
+            ctx.adb_client.shell(serial=ctx.device.device_id, command=cmd)
         else:
             error = {
                 "error": (
@@ -185,11 +187,27 @@ def _android_tap_by_resource_id_or_text(
     return TapOutput(error=error)
 
 
+def _extract_resource_id_and_text_from_selector(
+    selector: IdSelectorRequest | IdWithTextSelectorRequest | TextSelectorRequest,
+) -> tuple[str | None, str | None]:
+    """
+    Returns a tuple containing the resource_id and the text extracted from the selector.
+    """
+    if isinstance(selector, IdSelectorRequest):
+        return selector.id, None
+    elif isinstance(selector, IdWithTextSelectorRequest):
+        return selector.id, selector.text
+    elif isinstance(selector, TextSelectorRequest):
+        return None, selector.text
+    return None, None
+
+
 def tap_android(
     ctx: MobileUseContext,
     selector: SelectorRequest,
     index: int | None = None,
     ui_hierarchy: list[dict] | None = None,
+    long_press: bool = False,
 ) -> TapOutput:
     """
     Taps on a UI element identified by the 'target' object.
@@ -205,6 +223,7 @@ def tap_android(
         output = _android_tap_by_coordinates(
             ctx=ctx,
             coords=selector.coordinates,
+            long_press=long_press,
         )
     elif isinstance(selector, SelectorRequestWithPercentages):
         output = _android_tap_by_coordinates(
@@ -213,19 +232,11 @@ def tap_android(
                 width=ctx.device.device_width,
                 height=ctx.device.device_height,
             ),
+            long_press=long_press,
         )
     else:
-        resource_id = None
-        text = None
-
-        if isinstance(selector, IdSelectorRequest):
-            resource_id = selector.id
-        elif isinstance(selector, TextSelectorRequest):
-            text = selector.text
-        elif isinstance(selector, IdWithTextSelectorRequest):
-            resource_id = selector.id
-            text = selector.text
-        else:
+        resource_id, text = _extract_resource_id_and_text_from_selector(selector)
+        if not resource_id and not text:
             raise ValueError("Unsupported selector type")
 
         ui_hierarchy = (
@@ -237,6 +248,7 @@ def tap_android(
             resource_id=resource_id,
             text=text,
             index=index,
+            long_press=long_press,
         )
 
     return output
@@ -278,7 +290,18 @@ def long_press_on(
     selector_request: SelectorRequest,
     dry_run: bool = False,
     index: int | None = None,
+    ui_hierarchy: list[dict] | None = None,
 ):
+    if ctx.adb_client:
+        output = tap_android(
+            ctx=ctx,
+            selector=selector_request,
+            index=index,
+            ui_hierarchy=ui_hierarchy,
+            long_press=True,
+        )
+        return output.error if output.error else None
+
     long_press_on_body = selector_request.to_dict()
     if not long_press_on_body:
         error = "Invalid longPressOn selector request, could not format yaml"
@@ -554,7 +577,7 @@ if __name__ == "__main__":
             mobile_platform=DevicePlatform.ANDROID,
             device_id="986066a",
             device_width=1080,
-            device_height=1920,
+            device_height=2340,
         ),
         hw_bridge_client=DeviceHardwareClient("http://localhost:9999"),
         screen_api_client=ScreenApiClient("http://localhost:9998"),
@@ -664,9 +687,9 @@ if __name__ == "__main__":
     # )
 
     # press key
-    from minitap.mobile_use.tools.mobile.swipe import get_swipe_tool
+    from minitap.mobile_use.tools.mobile.long_press_on import get_long_press_on_tool
 
-    tool = get_swipe_tool(ctx=ctx)
+    tool = get_long_press_on_tool(ctx=ctx)
     command_output: Command = tool.invoke(
         {
             "name": tool.name,
@@ -674,18 +697,11 @@ if __name__ == "__main__":
             "id": uuid.uuid4().hex,
             "args": {
                 "agent_thought": "",
-                "swipe_request": {
-                    "swipe_mode": {
-                        "start": {
-                            "x_percent": 50,
-                            "y_percent": 50,
-                        },
-                        "end": {
-                            "x_percent": 50,
-                            "y_percent": 100,
-                        },
+                "selector_request": {
+                    "percentages": {
+                        "x_percent": 20,
+                        "y_percent": 28,
                     },
-                    "duration": 400,
                 },
                 "state": dummy_state,
             },
