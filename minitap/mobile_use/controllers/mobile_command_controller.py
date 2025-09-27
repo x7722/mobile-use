@@ -20,6 +20,8 @@ from minitap.mobile_use.controllers.types import (
     SelectorRequestWithCoordinates,
     SelectorRequestWithPercentages,
     SwipeRequest,
+    SwipeStartEndCoordinatesRequest,
+    SwipeStartEndPercentagesRequest,
     TapOutput,
     TextSelectorRequest,
     WaitTimeout,
@@ -102,6 +104,43 @@ def _android_tap_by_coordinates(
     return TapOutput(error=error)
 
 
+def _get_ui_element(
+    ui_hierarchy: list[dict],
+    resource_id: str | None = None,
+    text: str | None = None,
+    index: int | None = None,
+) -> tuple[dict | None, str | None]:
+    """
+    Try to find a UI element from the UI hierarchy.
+    Returns a tuple of the UI element and an error message.
+    """
+    error = None
+    ui_element = None
+
+    if resource_id:
+        ui_element = find_element_by_resource_id(
+            ui_hierarchy=ui_hierarchy,
+            resource_id=resource_id,
+            index=index,
+        )
+        if not ui_element:
+            error = f"Element with resource_id '{resource_id}' not found"
+    elif text:
+        ui_element = find_element_by_text(
+            ui_hierarchy=ui_hierarchy,
+            text=text,
+            index=index,
+        )
+        if not ui_element:
+            error = f"Element with text '{text}' not found"
+    else:
+        error = "UI Element retrieval failed - neither text nor resource_id provided."
+        logger.warning(error)
+        ui_element = None
+
+    return ui_element, error
+
+
 def _android_tap_by_resource_id_or_text(
     ctx: MobileUseContext,
     ui_hierarchy: list[dict],
@@ -113,33 +152,14 @@ def _android_tap_by_resource_id_or_text(
 
     error: dict | None = None
 
-    if resource_id:
-        ui_element = find_element_by_resource_id(
-            ui_hierarchy=ui_hierarchy,
-            resource_id=resource_id,
-            index=index,
-        )
-        if not ui_element:
-            error = {
-                "error": f"Element with resource_id '{resource_id}' not found",
-            }
-    elif text:
-        ui_element = find_element_by_text(
-            ui_hierarchy=ui_hierarchy,
-            text=text,
-            index=index,
-        )
-        if not ui_element:
-            error = {
-                "error": f"Element with text '{text}' not found",
-            }
-    else:
-        msg = "Tap with coordinates failed and no fallback (text/resource_id) provided."
-        logger.warning(msg)
-        error = {"error": msg}
-        ui_element = None
-
+    ui_element, error_msg = _get_ui_element(
+        ui_hierarchy=ui_hierarchy,
+        resource_id=resource_id,
+        text=text,
+        index=index,
+    )
     if not ui_element:
+        error = {"error": error_msg}
         return TapOutput(error=error)
 
     try:
@@ -187,11 +207,12 @@ def tap_android(
             coords=selector.coordinates,
         )
     elif isinstance(selector, SelectorRequestWithPercentages):
-        x = int(round((ctx.device.device_width * selector.percentages.x_percent) / 100.0))
-        y = int(round((ctx.device.device_height * selector.percentages.y_percent) / 100.0))
         output = _android_tap_by_coordinates(
             ctx=ctx,
-            coords=CoordinatesSelectorRequest(x=x, y=y),
+            coords=selector.percentages.to_coords(
+                width=ctx.device.device_width,
+                height=ctx.device.device_height,
+            ),
         )
     else:
         resource_id = None
@@ -269,7 +290,64 @@ def long_press_on(
     return run_flow_with_wait_for_animation_to_end(ctx, flow_input, dry_run=dry_run)
 
 
+def swipe_android(
+    ctx: MobileUseContext,
+    request: SwipeRequest,
+) -> str | None:
+    """Returns an error_message in case of failure."""
+    if not ctx.adb_client:
+        raise ValueError("ADB client is not initialized")
+
+    mode = request.swipe_mode
+    if isinstance(mode, SwipeStartEndCoordinatesRequest):
+        swipe_coords = mode
+    elif isinstance(mode, SwipeStartEndPercentagesRequest):
+        swipe_coords = mode.to_coords(
+            width=ctx.device.device_width,
+            height=ctx.device.device_height,
+        )
+    elif isinstance(mode, str):
+        x_mid = ctx.device.device_width // 2
+        y_mid = ctx.device.device_height // 2
+
+        top_mid = CoordinatesSelectorRequest(x=x_mid, y=0)
+        bottom_mid = CoordinatesSelectorRequest(x=x_mid, y=ctx.device.device_height - 1)
+        left_mid = CoordinatesSelectorRequest(x=0, y=y_mid)
+        right_mid = CoordinatesSelectorRequest(x=ctx.device.device_width - 1, y=y_mid)
+
+        if mode == "UP":
+            swipe_coords = SwipeStartEndCoordinatesRequest(start=bottom_mid, end=top_mid)
+        elif mode == "DOWN":
+            swipe_coords = SwipeStartEndCoordinatesRequest(start=top_mid, end=bottom_mid)
+        elif mode == "LEFT":
+            swipe_coords = SwipeStartEndCoordinatesRequest(start=right_mid, end=left_mid)
+        elif mode == "RIGHT":
+            swipe_coords = SwipeStartEndCoordinatesRequest(start=left_mid, end=right_mid)
+        else:
+            return "Unsupported swipe direction"
+    else:
+        return "Unsupported selector type"
+
+    if not request.duration:
+        request.duration = 400  # in ms
+
+    cmd = (
+        "input touchscreen swipe "
+        f"{swipe_coords.start.x} {swipe_coords.start.y} "
+        f"{swipe_coords.end.x} {swipe_coords.end.y} "
+        f"{request.duration}"
+    )
+    ctx.adb_client.shell(
+        serial=ctx.device.device_id,
+        command=cmd,
+    )
+    return None
+
+
 def swipe(ctx: MobileUseContext, swipe_request: SwipeRequest, dry_run: bool = False):
+    if ctx.adb_client:
+        error_msg = swipe_android(ctx=ctx, request=swipe_request)
+        return {"error": error_msg} if error_msg else None
     swipe_body = swipe_request.to_dict()
     if not swipe_body:
         error = "Invalid swipe selector request, could not format yaml"
@@ -482,7 +560,7 @@ if __name__ == "__main__":
         screen_api_client=ScreenApiClient("http://localhost:9998"),
         adb_client=adb_client,
     )
-    screen_data = get_screen_data(ctx.screen_api_client)
+    # screen_data = get_screen_data(ctx.screen_api_client)
     from minitap.mobile_use.graph.state import State
 
     dummy_state = State(
@@ -586,9 +664,9 @@ if __name__ == "__main__":
     # )
 
     # press key
-    from minitap.mobile_use.tools.mobile.tap import get_tap_tool
+    from minitap.mobile_use.tools.mobile.swipe import get_swipe_tool
 
-    tool = get_tap_tool(ctx=ctx)
+    tool = get_swipe_tool(ctx=ctx)
     command_output: Command = tool.invoke(
         {
             "name": tool.name,
@@ -596,8 +674,18 @@ if __name__ == "__main__":
             "id": uuid.uuid4().hex,
             "args": {
                 "agent_thought": "",
-                "target": {
-                    "text": "Search tab, 3 of 5",
+                "swipe_request": {
+                    "swipe_mode": {
+                        "start": {
+                            "x_percent": 50,
+                            "y_percent": 50,
+                        },
+                        "end": {
+                            "x_percent": 50,
+                            "y_percent": 100,
+                        },
+                    },
+                    "duration": 400,
                 },
                 "state": dummy_state,
             },
