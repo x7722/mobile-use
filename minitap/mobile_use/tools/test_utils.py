@@ -8,7 +8,7 @@ sys.modules["langgraph.prebuilt.chat_agent_executor"] = Mock()
 sys.modules["minitap.mobile_use.graph.state"] = Mock()
 
 from minitap.mobile_use.context import MobileUseContext  # noqa: E402
-from minitap.mobile_use.controllers.mobile_command_controller import (  # noqa: E402
+from minitap.mobile_use.controllers.types import (  # noqa: E402
     IdSelectorRequest,
     SelectorRequestWithCoordinates,
 )

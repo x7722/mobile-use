@@ -130,3 +130,46 @@ def get_bounds_for_element(element: dict) -> ElementBounds | None:
             logger.error(f"Failed to validate bounds: {e}")
             return None
     return None
+
+
+def match_text(text: str, element: dict) -> bool:
+    text_lower = text.lower()
+    return (
+        element.get("text", "").lower() == text_lower
+        or element.get("accessibilityText", "").lower() == text_lower
+    )
+
+
+def find_element_by_text(
+    ui_hierarchy: list[dict], text: str, index: int | None = None
+) -> dict | None:
+    """
+    Find a UI element by its text content (adapted to both flat and rich hierarchy)
+
+    This function performs a recursive, case-insensitive partial search.
+
+    Args:
+        ui_hierarchy: List of UI element dictionaries.
+        text: The text content to search for.
+
+    Returns:
+        The complete UI element dictionary if found, None otherwise.
+    """
+
+    def search_recursive(elements: list[dict]) -> dict | None:
+        for element in elements:
+            if isinstance(element, dict):
+                src = element.get("attributes", element)
+                if text and match_text(text=text, element=src):
+                    idx = index or 0
+                    if idx == 0:
+                        return element
+                    idx -= 1
+                    continue
+                if (children := element.get("children", [])) and (
+                    found := search_recursive(children)
+                ):
+                    return found
+        return None
+
+    return search_recursive(ui_hierarchy)

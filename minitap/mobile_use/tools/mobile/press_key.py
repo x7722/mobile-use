@@ -8,7 +8,7 @@ from langgraph.types import Command
 
 from minitap.mobile_use.constants import EXECUTOR_MESSAGES_KEY
 from minitap.mobile_use.context import MobileUseContext
-from minitap.mobile_use.controllers.mobile_command_controller import Key
+from minitap.mobile_use.controllers.types import Key
 from minitap.mobile_use.controllers.mobile_command_controller import (
     press_key as press_key_controller,
 )

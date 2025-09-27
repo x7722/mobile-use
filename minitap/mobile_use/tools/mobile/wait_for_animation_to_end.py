@@ -5,7 +5,7 @@ from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from minitap.mobile_use.constants import EXECUTOR_MESSAGES_KEY
 from minitap.mobile_use.context import MobileUseContext
-from minitap.mobile_use.controllers.mobile_command_controller import WaitTimeout
+from minitap.mobile_use.controllers.types import WaitTimeout
 from minitap.mobile_use.controllers.mobile_command_controller import (
     wait_for_animation_to_end as wait_for_animation_to_end_controller,
 )

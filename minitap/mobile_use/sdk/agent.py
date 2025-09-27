@@ -23,8 +23,8 @@ from minitap.mobile_use.context import (
     ExecutionSetup,
     MobileUseContext,
 )
+from minitap.mobile_use.controllers.types import ScreenDataResponse
 from minitap.mobile_use.controllers.mobile_command_controller import (
-    ScreenDataResponse,
     get_screen_data,
 )
 from minitap.mobile_use.controllers.platform_specific_commands_controller import get_first_device

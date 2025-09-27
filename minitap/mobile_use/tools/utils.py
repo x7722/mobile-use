@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from minitap.mobile_use.context import MobileUseContext
-from minitap.mobile_use.controllers.mobile_command_controller import (
+from minitap.mobile_use.controllers.types import (
     CoordinatesSelectorRequest,
     IdSelectorRequest,
     SelectorRequestWithCoordinates,
-    tap,
 )
+from minitap.mobile_use.controllers.mobile_command_controller import tap
 from minitap.mobile_use.graph.state import State
 from minitap.mobile_use.tools.types import Target
 from minitap.mobile_use.utils.logger import get_logger
@@ -14,55 +14,13 @@ from minitap.mobile_use.utils.ui_hierarchy import (
     ElementBounds,
     Point,
     find_element_by_resource_id,
+    find_element_by_text,
     get_bounds_for_element,
     get_element_text,
     is_element_focused,
 )
 
 logger = get_logger(__name__)
-
-
-def match_text(text: str, element: dict) -> bool:
-    text_lower = text.lower()
-    return (
-        element.get("text", "").lower() == text_lower
-        or element.get("accessibilityText", "").lower() == text_lower
-    )
-
-
-def find_element_by_text(
-    ui_hierarchy: list[dict], text: str, index: int | None = None
-) -> dict | None:
-    """
-    Find a UI element by its text content (adapted to both flat and rich hierarchy)
-
-    This function performs a recursive, case-insensitive partial search.
-
-    Args:
-        ui_hierarchy: List of UI element dictionaries.
-        text: The text content to search for.
-
-    Returns:
-        The complete UI element dictionary if found, None otherwise.
-    """
-
-    def search_recursive(elements: list[dict]) -> dict | None:
-        for element in elements:
-            if isinstance(element, dict):
-                src = element.get("attributes", element)
-                if text and match_text(text=text, element=src):
-                    idx = index or 0
-                    if idx == 0:
-                        return element
-                    idx -= 1
-                    continue
-                if (children := element.get("children", [])) and (
-                    found := search_recursive(children)
-                ):
-                    return found
-        return None
-
-    return search_recursive(ui_hierarchy)
 
 
 def tap_bottom_right_of_element(bounds: ElementBounds, ctx: MobileUseContext):

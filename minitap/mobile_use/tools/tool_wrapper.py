@@ -7,9 +7,7 @@ from minitap.mobile_use.context import MobileUseContext
 
 
 ToolGetter = Callable[[MobileUseContext], BaseTool | Awaitable[BaseTool]]
-CompositeToolsGetter = Callable[
-    [MobileUseContext], list[BaseTool] | Awaitable[list[BaseTool]]
-]
+CompositeToolsGetter = Callable[[MobileUseContext], list[BaseTool] | Awaitable[list[BaseTool]]]
 
 
 class ToolWrapper(BaseModel):

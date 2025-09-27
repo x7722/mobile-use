@@ -1,32 +1,41 @@
 import uuid
-from enum import Enum
-from typing import Annotated, Literal
 
 import yaml
 from adbutils import AdbClient
 from langgraph.types import Command
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 from requests import JSONDecodeError
 
 from minitap.mobile_use.clients.device_hardware_client import DeviceHardwareClient
 from minitap.mobile_use.clients.screen_api_client import ScreenApiClient
 from minitap.mobile_use.config import initialize_llm_config
 from minitap.mobile_use.context import DeviceContext, DevicePlatform, MobileUseContext
+from minitap.mobile_use.controllers.types import (
+    CoordinatesSelectorRequest,
+    IdSelectorRequest,
+    IdWithTextSelectorRequest,
+    Key,
+    ScreenDataResponse,
+    SelectorRequest,
+    SelectorRequestWithCoordinates,
+    SelectorRequestWithPercentages,
+    SwipeRequest,
+    TapOutput,
+    TextSelectorRequest,
+    WaitTimeout,
+)
 from minitap.mobile_use.utils.errors import ControllerErrors
 from minitap.mobile_use.utils.logger import get_logger
+from minitap.mobile_use.utils.ui_hierarchy import (
+    find_element_by_resource_id,
+    get_bounds_for_element,
+    find_element_by_text,
+)
 
 logger = get_logger(__name__)
 
 
 ###### Screen elements retrieval ######
-
-
-class ScreenDataResponse(BaseModel):
-    base64: str
-    elements: list
-    width: int
-    height: int
-    platform: str
 
 
 def get_screen_data(screen_api_client: ScreenApiClient):
@@ -72,79 +81,144 @@ def run_flow(ctx: MobileUseContext, flow_steps: list, dry_run: bool = False) -> 
     return None
 
 
-class CoordinatesSelectorRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    x: int
-    y: int
+def _android_tap_by_coordinates(
+    ctx: MobileUseContext,
+    coords: CoordinatesSelectorRequest,
+) -> TapOutput:
+    assert ctx.adb_client is not None
 
-    def to_str(self):
-        return f"{self.x}, {self.y}"
+    error: dict | None = None
+
+    try:
+        ctx.adb_client.shell(
+            serial=ctx.device.device_id,
+            command=f"input tap {coords.x} {coords.y}",
+        )
+
+    except Exception as e:
+        logger.warning(f"Exception during tap with coordinates '{coords.to_str()}': {e}")
+        error = {"error": str(e)}
+
+    return TapOutput(error=error)
 
 
-class PercentagesSelectorRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+def _android_tap_by_resource_id_or_text(
+    ctx: MobileUseContext,
+    ui_hierarchy: list[dict],
+    resource_id: str | None = None,
+    text: str | None = None,
+    index: int | None = None,
+) -> TapOutput:
+    assert ctx.adb_client is not None
+
+    error: dict | None = None
+
+    if resource_id:
+        ui_element = find_element_by_resource_id(
+            ui_hierarchy=ui_hierarchy,
+            resource_id=resource_id,
+            index=index,
+        )
+        if not ui_element:
+            error = {
+                "error": f"Element with resource_id '{resource_id}' not found",
+            }
+    elif text:
+        ui_element = find_element_by_text(
+            ui_hierarchy=ui_hierarchy,
+            text=text,
+            index=index,
+        )
+        if not ui_element:
+            error = {
+                "error": f"Element with text '{text}' not found",
+            }
+    else:
+        msg = "Tap with coordinates failed and no fallback (text/resource_id) provided."
+        logger.warning(msg)
+        error = {"error": msg}
+        ui_element = None
+
+    if not ui_element:
+        return TapOutput(error=error)
+
+    try:
+        bounds = get_bounds_for_element(ui_element)
+        if bounds:
+            center = bounds.get_center()
+            ctx.adb_client.shell(
+                serial=ctx.device.device_id,
+                command=f"input tap {center.x} {center.y}",
+            )
+        else:
+            error = {
+                "error": (
+                    f"Element bounds not found for resource_id '{resource_id}' or text '{text}'",
+                )
+            }
+    except Exception as e:
+        logger.warning(
+            f"Exception during tap with resource_id '{resource_id}' or text '{text}': {e}",
+        )
+        error = {"error": str(e)}
+
+    return TapOutput(error=error)
+
+
+def tap_android(
+    ctx: MobileUseContext,
+    selector: SelectorRequest,
+    index: int | None = None,
+    ui_hierarchy: list[dict] | None = None,
+) -> TapOutput:
     """
-    0%,0%        # top-left corner
-    100%,100%    # bottom-right corner
-    50%,50%      # center
+    Taps on a UI element identified by the 'target' object.
+
+    The 'target' object allows specifying an element by its resource_id
+    (with an optional index), its coordinates, or its text content (with an optional index).
+    The tool uses a fallback strategy, trying the locators in that order.
     """
+    if not ctx.adb_client:
+        raise ValueError("ADB client is not initialized")
 
-    x_percent: int
-    y_percent: int
+    if isinstance(selector, SelectorRequestWithCoordinates):
+        output = _android_tap_by_coordinates(
+            ctx=ctx,
+            coords=selector.coordinates,
+        )
+    elif isinstance(selector, SelectorRequestWithPercentages):
+        x = int(round((ctx.device.device_width * selector.percentages.x_percent) / 100.0))
+        y = int(round((ctx.device.device_height * selector.percentages.y_percent) / 100.0))
+        output = _android_tap_by_coordinates(
+            ctx=ctx,
+            coords=CoordinatesSelectorRequest(x=x, y=y),
+        )
+    else:
+        resource_id = None
+        text = None
 
-    def to_str(self):
-        return f"{self.x_percent}%, {self.y_percent}%"
+        if isinstance(selector, IdSelectorRequest):
+            resource_id = selector.id
+        elif isinstance(selector, TextSelectorRequest):
+            text = selector.text
+        elif isinstance(selector, IdWithTextSelectorRequest):
+            resource_id = selector.id
+            text = selector.text
+        else:
+            raise ValueError("Unsupported selector type")
 
+        ui_hierarchy = (
+            ui_hierarchy or get_screen_data(screen_api_client=ctx.screen_api_client).elements
+        )
+        output = _android_tap_by_resource_id_or_text(
+            ctx=ctx,
+            ui_hierarchy=ui_hierarchy,
+            resource_id=resource_id,
+            text=text,
+            index=index,
+        )
 
-class IdSelectorRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    id: str
-
-    def to_dict(self) -> dict[str, str | int]:
-        return {"id": self.id}
-
-
-# Useful to tap on an element when there are multiple views with the same id
-class IdWithTextSelectorRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    id: str
-    text: str
-
-    def to_dict(self) -> dict[str, str | int]:
-        return {"id": self.id, "text": self.text}
-
-
-class TextSelectorRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    text: str
-
-    def to_dict(self) -> dict[str, str | int]:
-        return {"text": self.text}
-
-
-class SelectorRequestWithCoordinates(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    coordinates: CoordinatesSelectorRequest
-
-    def to_dict(self) -> dict[str, str | int]:
-        return {"point": self.coordinates.to_str()}
-
-
-class SelectorRequestWithPercentages(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    percentages: PercentagesSelectorRequest
-
-    def to_dict(self) -> dict[str, str | int]:
-        return {"point": self.percentages.to_str()}
-
-
-SelectorRequest = (
-    IdSelectorRequest
-    | SelectorRequestWithCoordinates
-    | SelectorRequestWithPercentages
-    | TextSelectorRequest
-    | IdWithTextSelectorRequest
-)
+    return output
 
 
 def tap(
@@ -152,11 +226,21 @@ def tap(
     selector_request: SelectorRequest,
     dry_run: bool = False,
     index: int | None = None,
+    ui_hierarchy: list[dict] | None = None,
 ):
     """
     Tap on a selector.
     Index is optional and is used when you have multiple views matching the same selector.
     """
+    if ctx.adb_client:
+        output = tap_android(
+            ctx=ctx,
+            selector=selector_request,
+            index=index,
+            ui_hierarchy=ui_hierarchy,
+        )
+        return output.error if output.error else None
+
     tap_body = selector_request.to_dict()
     if not tap_body:
         error = "Invalid tap selector request, could not format yaml"
@@ -183,48 +267,6 @@ def long_press_on(
         long_press_on_body["index"] = index
     flow_input = [{"longPressOn": long_press_on_body}]
     return run_flow_with_wait_for_animation_to_end(ctx, flow_input, dry_run=dry_run)
-
-
-class SwipeStartEndCoordinatesRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    start: CoordinatesSelectorRequest
-    end: CoordinatesSelectorRequest
-
-    def to_dict(self):
-        return {"start": self.start.to_str(), "end": self.end.to_str()}
-
-
-class SwipeStartEndPercentagesRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    start: PercentagesSelectorRequest
-    end: PercentagesSelectorRequest
-
-    def to_dict(self):
-        return {"start": self.start.to_str(), "end": self.end.to_str()}
-
-
-SwipeDirection = Annotated[
-    Literal["UP", "DOWN", "LEFT", "RIGHT"],
-    BeforeValidator(lambda v: v.upper() if isinstance(v, str) else v),
-]
-
-
-class SwipeRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    swipe_mode: SwipeStartEndCoordinatesRequest | SwipeStartEndPercentagesRequest | SwipeDirection
-    duration: int | None = None  # in ms, default is 400ms
-
-    def to_dict(self):
-        res = {}
-        if isinstance(self.swipe_mode, SwipeStartEndCoordinatesRequest):
-            res |= self.swipe_mode.to_dict()
-        elif isinstance(self.swipe_mode, SwipeStartEndPercentagesRequest):
-            res |= self.swipe_mode.to_dict()
-        elif self.swipe_mode in ["UP", "DOWN", "LEFT", "RIGHT"]:
-            res |= {"direction": self.swipe_mode}
-        if self.duration:
-            res |= {"duration": self.duration}
-        return res
 
 
 def swipe(ctx: MobileUseContext, swipe_request: SwipeRequest, dry_run: bool = False):
@@ -389,12 +431,6 @@ def back(ctx: MobileUseContext, dry_run: bool = False):
     )
 
 
-class Key(Enum):
-    ENTER = "Enter"
-    HOME = "Home"
-    BACK = "Back"
-
-
 def press_key(ctx: MobileUseContext, key: Key, dry_run: bool = False):
     adb_client = ctx.adb_client
     if adb_client:
@@ -410,12 +446,6 @@ def press_key(ctx: MobileUseContext, key: Key, dry_run: bool = False):
 
 
 #### Other commands ####
-
-
-class WaitTimeout(Enum):
-    SHORT = "500"
-    MEDIUM = "1000"
-    LONG = "5000"
 
 
 def wait_for_animation_to_end(
@@ -438,13 +468,13 @@ def run_flow_with_wait_for_animation_to_end(
 
 
 if __name__ == "__main__":
-    adb_client = AdbClient(host="127.0.0.1", port=5037)
+    adb_client = AdbClient(host="192.168.1.6", port=5037)
     ctx = MobileUseContext(
         llm_config=initialize_llm_config(),
         device=DeviceContext(
             host_platform="WINDOWS",
             mobile_platform=DevicePlatform.ANDROID,
-            device_id="f67a5c8b",
+            device_id="986066a",
             device_width=1080,
             device_height=1920,
         ),
@@ -556,9 +586,9 @@ if __name__ == "__main__":
     # )
 
     # press key
-    from minitap.mobile_use.tools.mobile.press_key import get_press_key_tool
+    from minitap.mobile_use.tools.mobile.tap import get_tap_tool
 
-    tool = get_press_key_tool(ctx=ctx)
+    tool = get_tap_tool(ctx=ctx)
     command_output: Command = tool.invoke(
         {
             "name": tool.name,
@@ -566,7 +596,9 @@ if __name__ == "__main__":
             "id": uuid.uuid4().hex,
             "args": {
                 "agent_thought": "",
-                "key": "Enter",
+                "target": {
+                    "text": "Search tab, 3 of 5",
+                },
                 "state": dummy_state,
             },
         }
