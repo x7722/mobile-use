@@ -22,6 +22,14 @@ from minitap.mobile_use.utils.ui_hierarchy import (
 logger = get_logger(__name__)
 
 
+def match_text(text: str, element: dict) -> bool:
+    text_lower = text.lower()
+    return (
+        element.get("text", "").lower() == text_lower
+        or element.get("accessibilityText", "").lower() == text_lower
+    )
+
+
 def find_element_by_text(
     ui_hierarchy: list[dict], text: str, index: int | None = None
 ) -> dict | None:
@@ -42,7 +50,7 @@ def find_element_by_text(
         for element in elements:
             if isinstance(element, dict):
                 src = element.get("attributes", element)
-                if text and text.lower() == src.get("text", "").lower():
+                if text and match_text(text=text, element=src):
                     idx = index or 0
                     if idx == 0:
                         return element
