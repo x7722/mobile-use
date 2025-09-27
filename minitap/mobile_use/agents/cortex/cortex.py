@@ -13,7 +13,7 @@ from langgraph.graph.message import REMOVE_ALL_MESSAGES
 
 from minitap.mobile_use.agents.cortex.types import CortexOutput
 from minitap.mobile_use.agents.planner.utils import get_current_subgoal
-from minitap.mobile_use.constants import EXECUTOR_MESSAGES_KEY
+from minitap.mobile_use.constants import EXECUTOR_MESSAGES_KEY, MAX_MESSAGES_IN_HISTORY
 from minitap.mobile_use.context import MobileUseContext
 from minitap.mobile_use.graph.state import State
 from minitap.mobile_use.services.llm import get_llm, invoke_llm_with_timeout_message, with_fallback
@@ -60,7 +60,7 @@ class CortexNode:
                 else ""
             ),
         ]
-        for thought in state.agents_thoughts:
+        for thought in state.agents_thoughts[-MAX_MESSAGES_IN_HISTORY:]:
             messages.append(AIMessage(content=thought))
 
         if state.latest_ui_hierarchy:
