@@ -258,7 +258,9 @@ def erase_text(ctx: MobileUseContext, nb_chars: int | None = None, dry_run: bool
 
 def launch_app(ctx: MobileUseContext, package_name: str, dry_run: bool = False):
     flow_input = [{"launchApp": package_name}]
-    return run_flow_with_wait_for_animation_to_end(ctx, flow_input, dry_run=dry_run)
+    return run_flow_with_wait_for_animation_to_end(
+        ctx, flow_input, dry_run=dry_run, wait_for_animation_to_end=True
+    )
 
 
 def stop_app(ctx: MobileUseContext, package_name: str | None = None, dry_run: bool = False):
@@ -266,12 +268,18 @@ def stop_app(ctx: MobileUseContext, package_name: str | None = None, dry_run: bo
         flow_input = ["stopApp"]
     else:
         flow_input = [{"stopApp": package_name}]
-    return run_flow_with_wait_for_animation_to_end(ctx, flow_input, dry_run=dry_run)
+    return run_flow_with_wait_for_animation_to_end(
+        ctx,
+        flow_input,
+        dry_run=dry_run,
+    )
 
 
 def open_link(ctx: MobileUseContext, url: str, dry_run: bool = False):
     flow_input = [{"openLink": url}]
-    return run_flow_with_wait_for_animation_to_end(ctx, flow_input, dry_run=dry_run)
+    return run_flow_with_wait_for_animation_to_end(
+        ctx, flow_input, dry_run=dry_run, wait_for_animation_to_end=True
+    )
 
 
 ##### Key related commands #####
@@ -279,7 +287,9 @@ def open_link(ctx: MobileUseContext, url: str, dry_run: bool = False):
 
 def back(ctx: MobileUseContext, dry_run: bool = False):
     flow_input = ["back"]
-    return run_flow_with_wait_for_animation_to_end(ctx, flow_input, dry_run=dry_run)
+    return run_flow_with_wait_for_animation_to_end(
+        ctx, flow_input, dry_run=dry_run, wait_for_animation_to_end=True
+    )
 
 
 class Key(Enum):
@@ -311,9 +321,13 @@ def wait_for_animation_to_end(
 
 
 def run_flow_with_wait_for_animation_to_end(
-    ctx: MobileUseContext, base_flow: list, dry_run: bool = False
+    ctx: MobileUseContext,
+    base_flow: list,
+    dry_run: bool = False,
+    wait_for_animation_to_end: bool = False,
 ):
-    # base_flow.append({"waitForAnimationToEnd": {"timeout": int(WaitTimeout.MEDIUM.value)}})
+    if wait_for_animation_to_end:
+        base_flow.append({"waitForAnimationToEnd": {"timeout": int(WaitTimeout.SHORT.value)}})
     return run_flow(ctx, base_flow, dry_run=dry_run)
 
 
