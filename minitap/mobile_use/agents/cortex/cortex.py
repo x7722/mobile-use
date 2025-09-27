@@ -18,7 +18,6 @@ from minitap.mobile_use.context import MobileUseContext
 from minitap.mobile_use.graph.state import State
 from minitap.mobile_use.services.llm import get_llm, invoke_llm_with_timeout_message, with_fallback
 from minitap.mobile_use.tools.index import EXECUTOR_WRAPPERS_TOOLS, format_tools_list
-from minitap.mobile_use.utils.conversations import get_screenshot_message_for_llm
 from minitap.mobile_use.utils.decorators import wrap_with_callbacks
 from minitap.mobile_use.utils.logger import get_logger
 
@@ -45,7 +44,9 @@ class CortexNode:
             subgoal_plan=state.subgoal_plan,
             current_subgoal=get_current_subgoal(state.subgoal_plan),
             executor_feedback=executor_feedback,
-            executor_tools_list=format_tools_list(ctx=self.ctx, wrappers=EXECUTOR_WRAPPERS_TOOLS),
+            executor_tools_list=await format_tools_list(
+                ctx=self.ctx, wrappers=EXECUTOR_WRAPPERS_TOOLS
+            ),
         )
         messages = [
             SystemMessage(content=system_message),
@@ -61,10 +62,6 @@ class CortexNode:
         ]
         for thought in state.agents_thoughts:
             messages.append(AIMessage(content=thought))
-
-        if state.latest_screenshot_base64:
-            messages.append(get_screenshot_message_for_llm(state.latest_screenshot_base64))
-            logger.info("Added screenshot to context")
 
         if state.latest_ui_hierarchy:
             ui_hierarchy_dict: list[dict] = state.latest_ui_hierarchy

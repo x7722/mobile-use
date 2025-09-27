@@ -1,13 +1,14 @@
+from typing import Annotated
+
 from langchain_core.messages import AIMessage, AnyMessage
 from langgraph.graph import add_messages
 from langgraph.prebuilt.chat_agent_executor import AgentStatePydantic
-from typing import Annotated
 
 from minitap.mobile_use.agents.planner.types import Subgoal
 from minitap.mobile_use.config import AgentNode
+from minitap.mobile_use.context import MobileUseContext
 from minitap.mobile_use.utils.logger import get_logger
 from minitap.mobile_use.utils.recorder import record_interaction
-from minitap.mobile_use.context import MobileUseContext
 
 logger = get_logger(__name__)
 
@@ -24,7 +25,6 @@ class State(AgentStatePydantic):
     subgoal_plan: Annotated[list[Subgoal], "The current plan, made of subgoals"]
 
     # contextor related keys
-    latest_screenshot_base64: Annotated[str | None, "Latest screenshot of the device", take_last]
     latest_ui_hierarchy: Annotated[
         list[dict] | None, "Latest UI hierarchy of the device", take_last
     ]

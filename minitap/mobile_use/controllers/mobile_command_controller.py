@@ -313,7 +313,7 @@ def wait_for_animation_to_end(
 def run_flow_with_wait_for_animation_to_end(
     ctx: MobileUseContext, base_flow: list, dry_run: bool = False
 ):
-    base_flow.append({"waitForAnimationToEnd": {"timeout": int(WaitTimeout.MEDIUM.value)}})
+    # base_flow.append({"waitForAnimationToEnd": {"timeout": int(WaitTimeout.MEDIUM.value)}})
     return run_flow(ctx, base_flow, dry_run=dry_run)
 
 
@@ -338,7 +338,6 @@ if __name__ == "__main__":
         messages=[],
         initial_goal="",
         subgoal_plan=[],
-        latest_screenshot_base64=screen_data.base64,
         focused_app_info=None,
         device_date="",
         structured_decisions=None,

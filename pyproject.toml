@@ -25,7 +25,7 @@ dependencies = [
     "langchain-mcp-adapters==0.1.7",
     "langchain-openai==0.3.27",
     "typer==0.16.0",
-    "langchain-cerebras>=0.5.0",
+    "langchain-cerebras==0.5.0",
     "inquirer>=3.4.0",
     "sseclient-py==1.8.0",
     "fastapi==0.111.0",
@@ -33,6 +33,7 @@ dependencies = [
     "colorama>=0.4.6",
     "psutil>=5.9.0",
     "langchain-google-vertexai>=2.0.28",
+    "langchain-groq==0.3.8",
 ]
 
 [project.optional-dependencies]

@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: SecretStr | None = None
     XAI_API_KEY: SecretStr | None = None
     OPEN_ROUTER_API_KEY: SecretStr | None = None
+    GROQ_API_KEY: SecretStr | None = None
+    CEREBRAS_API_KEY: SecretStr | None = None
 
     OPENAI_BASE_URL: str | None = None
 
@@ -90,8 +92,8 @@ def record_events(output_path: Path | None, events: list[str] | BaseModel | Any)
 
 ### LLM Configuration
 
-LLMProvider = Literal["openai", "google", "openrouter", "xai", "vertexai"]
-LLMUtilsNode = Literal["outputter", "hopper"]
+LLMProvider = Literal["openai", "google", "openrouter", "xai", "vertexai", "groq", "cerebras"]
+LLMUtilsNode = Literal["outputter", "hopper", "screen_analyzer"]
 AgentNode = Literal["planner", "orchestrator", "cortex", "executor"]
 AgentNodeWithFallback = Literal["cortex"]
 
@@ -131,6 +133,12 @@ class LLM(BaseModel):
             case "xai":
                 if not settings.XAI_API_KEY:
                     raise Exception(f"{name} requires XAI_API_KEY in .env")
+            case "groq":
+                if not settings.GROQ_API_KEY:
+                    raise Exception(f"{name} requires GROQ_API_KEY in .env")
+            case "cerebras":
+                if not settings.CEREBRAS_API_KEY:
+                    raise Exception(f"{name} requires CEREBRAS_API_KEY in .env")
 
     def __str__(self):
         return f"{self.provider}/{self.model}"
@@ -146,6 +154,7 @@ class LLMWithFallback(LLM):
 class LLMConfigUtils(BaseModel):
     outputter: LLM
     hopper: LLM
+    screen_analyzer: LLM
 
 
 class LLMConfig(BaseModel):
@@ -162,6 +171,7 @@ class LLMConfig(BaseModel):
         self.executor.validate_provider("Executor")
         self.utils.outputter.validate_provider("Outputter")
         self.utils.hopper.validate_provider("Hopper")
+        self.utils.screen_analyzer.validate_provider("Screen Analyzer")
 
     def __str__(self):
         return f"""
@@ -172,6 +182,7 @@ class LLMConfig(BaseModel):
 🧩 Utils:
     🔽 Hopper: {self.utils.hopper}
     📝 Outputter: {self.utils.outputter}
+    📸 Screen Analyzer: {self.utils.screen_analyzer}
 """
 
     def get_agent(self, item: AgentNode) -> LLM:
@@ -202,6 +213,7 @@ def get_default_llm_config() -> LLMConfig:
             utils=LLMConfigUtils(
                 outputter=LLM(provider="openai", model="gpt-5-nano"),
                 hopper=LLM(provider="openai", model="gpt-4.1"),
+                screen_analyzer=LLM(provider="openai", model="gpt-4o"),
             ),
         )
 

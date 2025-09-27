@@ -53,8 +53,9 @@ class ExecutorNode:
         ]
 
         llm = get_llm(ctx=self.ctx, name="executor")
+        executor_tools = await get_tools_from_wrappers(self.ctx, EXECUTOR_WRAPPERS_TOOLS)
         llm_bind_tools_kwargs: dict = {
-            "tools": get_tools_from_wrappers(self.ctx, EXECUTOR_WRAPPERS_TOOLS),
+            "tools": executor_tools,
         }
 
         # ChatGoogleGenerativeAI does not support the "parallel_tool_calls" keyword

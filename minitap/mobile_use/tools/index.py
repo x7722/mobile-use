@@ -1,10 +1,12 @@
+import inspect
+
 from langchain_core.tools import BaseTool
 
 from minitap.mobile_use.context import MobileUseContext
+from minitap.mobile_use.tools.mobile.analyze_screen import analyze_screen_wrapper
 from minitap.mobile_use.tools.mobile.back import back_wrapper
 from minitap.mobile_use.tools.mobile.clear_text import clear_text_wrapper
 from minitap.mobile_use.tools.mobile.erase_one_char import erase_one_char_wrapper
-from minitap.mobile_use.tools.mobile.glimpse_screen import glimpse_screen_wrapper
 from minitap.mobile_use.tools.mobile.input_text import input_text_wrapper
 from minitap.mobile_use.tools.mobile.launch_app import launch_app_wrapper
 from minitap.mobile_use.tools.mobile.long_press_on import long_press_on_wrapper
@@ -24,7 +26,7 @@ EXECUTOR_WRAPPERS_TOOLS = [
     tap_wrapper,
     long_press_on_wrapper,
     swipe_wrapper,
-    glimpse_screen_wrapper,
+    analyze_screen_wrapper,
     input_text_wrapper,
     erase_one_char_wrapper,
     launch_app_wrapper,
@@ -35,7 +37,7 @@ EXECUTOR_WRAPPERS_TOOLS = [
 ]
 
 
-def get_tools_from_wrappers(
+async def get_tools_from_wrappers(
     ctx: "MobileUseContext",
     wrappers: list[ToolWrapper],
 ) -> list[BaseTool]:
@@ -47,12 +49,19 @@ def get_tools_from_wrappers(
             if wrapper.tool_fn_getter == swipe_wrapper.tool_fn_getter and isinstance(
                 wrapper, CompositeToolWrapper
             ):
-                tools.extend(wrapper.composite_tools_fn_getter(ctx))
+                composite_tools = wrapper.composite_tools_fn_getter(ctx)
+                if inspect.isawaitable(composite_tools):
+                    composite_tools = await composite_tools
+                tools.extend(composite_tools)
                 continue
 
-        tools.append(wrapper.tool_fn_getter(ctx))
+        tool = wrapper.tool_fn_getter(ctx)
+        if inspect.isawaitable(tool):
+            tool = await tool
+        tools.append(tool)
     return tools
 
 
-def format_tools_list(ctx: MobileUseContext, wrappers: list[ToolWrapper]) -> str:
-    return ", ".join([tool.name for tool in get_tools_from_wrappers(ctx, wrappers)])
+async def format_tools_list(ctx: MobileUseContext, wrappers: list[ToolWrapper]) -> str:
+    tools = await get_tools_from_wrappers(ctx, wrappers)
+    return ", ".join([tool.name for tool in tools])

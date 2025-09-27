@@ -27,11 +27,15 @@ class PlannerNode:
     async def __call__(self, state: State):
         needs_replan = one_of_them_is_failure(state.subgoal_plan)
 
+        executor_tools_list = await format_tools_list(
+            ctx=self.ctx, wrappers=EXECUTOR_WRAPPERS_TOOLS
+        )
+
         system_message = Template(
             Path(__file__).parent.joinpath("planner.md").read_text(encoding="utf-8")
         ).render(
             platform=self.ctx.device.mobile_platform.value,
-            executor_tools_list=format_tools_list(ctx=self.ctx, wrappers=EXECUTOR_WRAPPERS_TOOLS),
+            executor_tools_list=executor_tools_list,
         )
         human_message = Template(
             Path(__file__).parent.joinpath("human.md").read_text(encoding="utf-8")

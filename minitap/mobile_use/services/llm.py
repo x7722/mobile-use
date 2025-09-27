@@ -3,9 +3,11 @@ import logging
 from collections.abc import Awaitable, Callable, Coroutine
 from typing import Any, Literal, TypeVar, overload
 
+from langchain_cerebras import ChatCerebras
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_vertexai import ChatVertexAI
+from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
 from minitap.mobile_use.config import (
@@ -104,6 +106,11 @@ def get_openrouter_llm(model_name: str, temperature: float = 1):
         temperature=temperature,
         api_key=settings.OPEN_ROUTER_API_KEY,
         base_url="https://openrouter.ai/api/v1",
+        extra_body={
+            "provider": {
+                "sort": "throughput",
+            }
+        },
     )
     return client
 
@@ -115,6 +122,26 @@ def get_grok_llm(model_name: str, temperature: float = 1) -> ChatOpenAI:
         api_key=settings.XAI_API_KEY,
         temperature=temperature,
         base_url="https://api.x.ai/v1",
+    )
+    return client
+
+
+def get_groq_llm(model_name: str, temperature: float = 1) -> ChatGroq:
+    assert settings.GROQ_API_KEY is not None
+    client = ChatGroq(
+        model=model_name,
+        api_key=settings.GROQ_API_KEY,
+        temperature=temperature,
+    )
+    return client
+
+
+def get_cerebras_llm(model_name: str, temperature: float = 1) -> ChatCerebras:
+    assert settings.CEREBRAS_API_KEY is not None
+    client = ChatCerebras(
+        model=model_name,
+        api_key=settings.CEREBRAS_API_KEY,
+        temperature=temperature,
     )
     return client
 
@@ -175,6 +202,10 @@ def get_llm(
         return get_openrouter_llm(llm.model, temperature)
     elif llm.provider == "xai":
         return get_grok_llm(llm.model, temperature)
+    elif llm.provider == "groq":
+        return get_groq_llm(llm.model, temperature)
+    elif llm.provider == "cerebras":
+        return get_cerebras_llm(llm.model, temperature)
     else:
         raise ValueError(f"Unsupported provider: {llm.provider}")
 

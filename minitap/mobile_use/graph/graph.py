@@ -69,10 +69,10 @@ def post_executor_gate(
     if isinstance(last_message, AIMessage):
         tool_calls = getattr(last_message, "tool_calls", None)
         if tool_calls and len(tool_calls) > 0:
-            logger.info("🔨👁️  Found tool calls: " + str(tool_calls))
+            logger.info("[executor]" + str(tool_calls))
             return "invoke_tools"
         else:
-            logger.info("🔨❌ No tool calls found")
+            logger.info("[executor] ❌ No tool calls found")
     return "skip"
 
 
@@ -89,7 +89,7 @@ async def get_graph(ctx: MobileUseContext) -> CompiledStateGraph:
 
     graph_builder.add_node("executor", ExecutorNode(ctx))
     executor_tool_node = ExecutorToolNode(
-        tools=get_tools_from_wrappers(ctx=ctx, wrappers=EXECUTOR_WRAPPERS_TOOLS),
+        tools=await get_tools_from_wrappers(ctx=ctx, wrappers=EXECUTOR_WRAPPERS_TOOLS),
         messages_key=EXECUTOR_MESSAGES_KEY,
     )
     graph_builder.add_node("executor_tools", executor_tool_node)
