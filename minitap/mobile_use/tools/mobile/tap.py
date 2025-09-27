@@ -43,8 +43,35 @@ def get_tap_tool(ctx: MobileUseContext):
         }  # Default to failure
         latest_selector_info = "N/A"
 
-        # 1. Try with resource_id
-        if target.resource_id:
+        # 1. Try with coordinates
+        if target.coordinates:
+            try:
+                center_point = target.coordinates.get_center()
+                selector = SelectorRequestWithCoordinates(
+                    coordinates=CoordinatesSelectorRequest(x=center_point.x, y=center_point.y)
+                )
+                logger.info(
+                    f"Attempting to tap using coordinates: {center_point.x},{center_point.y}"
+                )
+                latest_selector_info = f"coordinates='{target.coordinates}'"
+                result = tap_controller(
+                    ctx=ctx,
+                    selector_request=selector,
+                    ui_hierarchy=state.latest_ui_hierarchy,
+                )
+                if result is None:  # Success
+                    output = None
+                else:
+                    logger.warning(
+                        f"Tap with coordinates '{target.coordinates}' failed. Error: {result}"
+                    )
+                    output = result
+            except Exception as e:
+                logger.warning(f"Exception during tap with coordinates '{target.coordinates}': {e}")
+                output = {"error": str(e)}
+
+        # 2. If coordinates failed or wasn't provided, try with resource_id
+        if output is not None and target.resource_id:
             try:
                 selector = IdSelectorRequest(id=target.resource_id)
                 logger.info(
@@ -69,33 +96,6 @@ def get_tap_tool(ctx: MobileUseContext):
                     output = result
             except Exception as e:
                 logger.warning(f"Exception during tap with resource_id '{target.resource_id}': {e}")
-                output = {"error": str(e)}
-
-        # 2. If resource_id failed or wasn't provided, try with coordinates
-        if output is not None and target.coordinates:
-            try:
-                center_point = target.coordinates.get_center()
-                selector = SelectorRequestWithCoordinates(
-                    coordinates=CoordinatesSelectorRequest(x=center_point.x, y=center_point.y)
-                )
-                logger.info(
-                    f"Attempting to tap using coordinates: {center_point.x},{center_point.y}"
-                )
-                latest_selector_info = f"coordinates='{target.coordinates}'"
-                result = tap_controller(
-                    ctx=ctx,
-                    selector_request=selector,
-                    ui_hierarchy=state.latest_ui_hierarchy,
-                )
-                if result is None:  # Success
-                    output = None
-                else:
-                    logger.warning(
-                        f"Tap with coordinates '{target.coordinates}' failed. Error: {result}"
-                    )
-                    output = result
-            except Exception as e:
-                logger.warning(f"Exception during tap with coordinates '{target.coordinates}': {e}")
                 output = {"error": str(e)}
 
         # 3. If coordinates failed or weren't provided, try with text
