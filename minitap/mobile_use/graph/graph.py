@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Literal
 
 from langchain_core.messages import (
@@ -50,11 +51,16 @@ def post_orchestrator_gate(
 
 def post_cortex_gate(
     state: State,
-) -> Literal["continue", "end_subgoal"]:
+) -> Sequence[str]:
     logger.info("Starting post_cortex_gate")
-    if len(state.complete_subgoals_by_ids) > 0:
-        return "end_subgoal"
-    return "continue"
+    node_sequence = []
+
+    if len(state.complete_subgoals_by_ids) > 0 or not state.structured_decisions:
+        node_sequence.append("review_subgoals")
+    if state.structured_decisions:
+        node_sequence.append("continue")
+
+    return node_sequence
 
 
 def post_executor_gate(
@@ -76,33 +82,48 @@ def post_executor_gate(
     return "skip"
 
 
+def convergence_node(state: State):
+    return {}
+
+
+def convergence_gate(
+    state: State,
+) -> Literal["continue", "end"]:
+    logger.info("Starting convergence_node")
+    if all_completed(state.subgoal_plan):
+        logger.info("All subgoals are completed, ending the goal")
+        return "end"
+    return "continue"
+
+
 async def get_graph(ctx: MobileUseContext) -> CompiledStateGraph:
     graph_builder = StateGraph(State)
 
     ## Define nodes
-    graph_builder.add_node("planner", PlannerNode(ctx))
-    graph_builder.add_node("orchestrator", OrchestratorNode(ctx))
+    graph_builder.add_node(node="planner", action=PlannerNode(ctx))
+    graph_builder.add_node(node="orchestrator", action=OrchestratorNode(ctx))
+    graph_builder.add_node(node="convergence", action=convergence_node, defer=True)
 
-    graph_builder.add_node("contextor", ContextorNode(ctx))
+    graph_builder.add_node(node="contextor", action=ContextorNode(ctx))
 
-    graph_builder.add_node("cortex", CortexNode(ctx))
+    graph_builder.add_node(node="cortex", action=CortexNode(ctx))
 
-    graph_builder.add_node("executor", ExecutorNode(ctx))
+    graph_builder.add_node(node="executor", action=ExecutorNode(ctx))
     executor_tool_node = ExecutorToolNode(
         tools=await get_tools_from_wrappers(ctx=ctx, wrappers=EXECUTOR_WRAPPERS_TOOLS),
         messages_key=EXECUTOR_MESSAGES_KEY,
     )
-    graph_builder.add_node("executor_tools", executor_tool_node)
+    graph_builder.add_node(node="executor_tools", action=executor_tool_node)
 
-    graph_builder.add_node("summarizer", SummarizerNode(ctx))
+    graph_builder.add_node(node="summarizer", action=SummarizerNode(ctx))
 
     # Linking nodes
     graph_builder.add_edge(START, "planner")
     graph_builder.add_edge("planner", "orchestrator")
     graph_builder.add_conditional_edges(
-        "orchestrator",
-        post_orchestrator_gate,
-        {
+        source="orchestrator",
+        path=post_orchestrator_gate,
+        path_map={
             "continue": "contextor",
             "replan": "planner",
             "end": END,
@@ -110,19 +131,30 @@ async def get_graph(ctx: MobileUseContext) -> CompiledStateGraph:
     )
     graph_builder.add_edge("contextor", "cortex")
     graph_builder.add_conditional_edges(
-        "cortex",
-        post_cortex_gate,
-        {
+        source="cortex",
+        path=post_cortex_gate,
+        path_map={
             "continue": "executor",
-            "end_subgoal": "orchestrator",
+            "review_subgoals": "orchestrator",
         },
     )
     graph_builder.add_conditional_edges(
-        "executor",
-        post_executor_gate,
-        {"invoke_tools": "executor_tools", "skip": "summarizer"},
+        source="executor",
+        path=post_executor_gate,
+        path_map={
+            "invoke_tools": "executor_tools",
+            "skip": "summarizer",
+        },
     )
     graph_builder.add_edge("executor_tools", "summarizer")
-    graph_builder.add_edge("summarizer", "contextor")
-
+    graph_builder.add_edge("summarizer", "convergence")
+    graph_builder.add_edge("orchestrator", "convergence")
+    graph_builder.add_conditional_edges(
+        source="convergence",
+        path=convergence_gate,
+        path_map={
+            "continue": "contextor",
+            "end": END,
+        },
+    )
     return graph_builder.compile()

@@ -49,6 +49,8 @@ async def generate_graph_docs():
     png_path = Path(__file__).parent.parent.parent / "doc" / "graph.png"
     print(f"Generating PNG at {png_path}...")
 
+    print(graph.get_graph().draw_mermaid())
+
     mermaid_text = graph.get_graph().draw_mermaid(
         node_colors=NodeStyles(
             default="fill:#d0c4f2,stroke:#b3b3b3,stroke-width:1px,color:#ffffff",
