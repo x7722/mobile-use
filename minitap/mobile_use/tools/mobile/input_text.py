@@ -136,14 +136,14 @@ def get_input_text_tool(ctx: MobileUseContext):
 
 def _on_input_success(text, text_input_content, text_input_resource_id):
     """Success message handler for input text operations."""
-    if text_input_resource_id is not None:
+    if text_input_resource_id is not None and text_input_content:
         return (
             f"Typed {repr(text)}.\n"
             f"Here is the whole content of input with id {repr(text_input_resource_id)}: "
             f"{repr(text_input_content)}"
         )
     else:
-        return "Typed text, should now verify before moving forward"
+        return f"Typed {repr(text)}. Should now verify before moving forward"
 
 
 input_text_wrapper = ToolWrapper(
