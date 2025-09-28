@@ -118,8 +118,13 @@ def get_latest_data():
 @app.get("/screen-info")
 async def get_screen_info():
     now = datetime.now(UTC)
+    waited_for_seconds = 0
     while not _latest_screen_ts or _latest_screen_ts < now:
-        time.sleep(0.05)
+        wait_for_seconds = 0.05
+        time.sleep(wait_for_seconds)
+        waited_for_seconds += wait_for_seconds
+        if waited_for_seconds >= 1:
+            break
     data = get_latest_data()
     return JSONResponse(content=data)
 
