@@ -1,3 +1,4 @@
+import time
 import uuid
 
 import yaml
@@ -551,6 +552,11 @@ def wait_for_animation_to_end(
     if timeout is None:
         return run_flow(ctx, ["waitForAnimationToEnd"], dry_run=dry_run)
     return run_flow(ctx, [{"waitForAnimationToEnd": {"timeout": timeout.value}}], dry_run=dry_run)
+
+
+def wait_for_delay(time_in_ms: int):
+    time.sleep(time_in_ms / 1000)
+    return None
 
 
 def run_flow_with_wait_for_animation_to_end(

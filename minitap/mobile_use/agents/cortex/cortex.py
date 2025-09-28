@@ -95,9 +95,9 @@ class CortexNode:
         )
 
         combined_thought_parts = []
-        if has_decisions:
+        if response.decisions_reason:
             combined_thought_parts.append(f"Decision reasoning: {response.decisions_reason}")
-        if has_subgoals_to_complete:
+        if response.goals_completion_reason:
             combined_thought_parts.append(
                 f"Subgoal completion reasoning: {response.goals_completion_reason}"
             )
