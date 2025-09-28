@@ -1,7 +1,6 @@
 from enum import Enum
-from typing import Annotated, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ScreenDataResponse(BaseModel):
@@ -29,15 +28,23 @@ class PercentagesSelectorRequest(BaseModel):
     50%,50%      # center
     """
 
-    x_percent: int = Field(description="X percentage (0-100)")
-    y_percent: int = Field(description="Y percentage (0-100)")
+    x_percent: float = Field(description="X percentage (0-100)")
+    y_percent: float = Field(description="Y percentage (0-100)")
+
+    def normalize(self):
+        if self.x_percent > 1:
+            self.x_percent = self.x_percent / 100
+        if self.y_percent > 1:
+            self.y_percent = self.y_percent / 100
 
     def to_str(self):
-        return f"{self.x_percent}%, {self.y_percent}%"
+        self.normalize()
+        return f"{int(self.x_percent * 100)}%, {int(self.y_percent * 100)}%"
 
     def to_coords(self, width: int, height: int):
-        x = int(round(((width - 1) * self.x_percent) / 100.0))
-        y = int(round(((height - 1) * self.y_percent) / 100.0))
+        self.normalize()
+        x = int(round((width - 1) * self.x_percent))
+        y = int(round((height - 1) * self.y_percent))
         return CoordinatesSelectorRequest(x=x, y=y)
 
 
@@ -120,15 +127,9 @@ class SwipeStartEndPercentagesRequest(BaseModel):
         )
 
 
-SwipeDirection = Annotated[
-    Literal["UP", "DOWN", "LEFT", "RIGHT"],
-    BeforeValidator(lambda v: v.upper() if isinstance(v, str) else v),
-]
-
-
 class SwipeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    swipe_mode: SwipeStartEndCoordinatesRequest | SwipeStartEndPercentagesRequest | SwipeDirection
+    swipe_mode: SwipeStartEndCoordinatesRequest | SwipeStartEndPercentagesRequest
     duration: int | None = None  # in ms, default is 400ms
 
     def to_dict(self):

@@ -12,7 +12,6 @@ from minitap.mobile_use.context import MobileUseContext
 from minitap.mobile_use.controllers.types import (
     CoordinatesSelectorRequest,
     PercentagesSelectorRequest,
-    SwipeDirection,
     SwipeRequest,
     SwipeStartEndCoordinatesRequest,
     SwipeStartEndPercentagesRequest,
@@ -123,29 +122,7 @@ def get_composite_swipe_tools(ctx: MobileUseContext) -> list[BaseTool]:
             }
         )
 
-    @tool
-    def swipe_direction(
-        agent_thought: str,
-        tool_call_id: Annotated[str, InjectedToolCallId],
-        state: Annotated[State, InjectedState],
-        direction: SwipeDirection,
-        duration: int = Field(description="Duration in ms", ge=1, le=10000, default=400),
-    ):
-        """Swipe in a specific direction across the screen."""
-        swipe_request = SwipeRequest(
-            swipe_mode=direction,
-            duration=duration,
-        )
-        return get_swipe_tool(ctx=ctx).invoke(
-            input={
-                "tool_call_id": tool_call_id,
-                "state": state,
-                "agent_thought": agent_thought,
-                "swipe_request": swipe_request,
-            }
-        )
-
-    return [swipe_coordinates, swipe_percentages, swipe_direction]
+    return [swipe_coordinates, swipe_percentages]
 
 
 swipe_wrapper = CompositeToolWrapper(

@@ -565,7 +565,7 @@ def run_flow_with_wait_for_animation_to_end(
 
 
 if __name__ == "__main__":
-    adb_client = AdbClient(host="192.168.1.6", port=5037)
+    adb_client = AdbClient(host="192.168.43.107", port=5037)
     ctx = MobileUseContext(
         llm_config=initialize_llm_config(),
         device=DeviceContext(
@@ -683,9 +683,9 @@ if __name__ == "__main__":
     # )
 
     # press key
-    from minitap.mobile_use.tools.mobile.long_press_on import get_long_press_on_tool
+    from minitap.mobile_use.tools.mobile.swipe import get_swipe_tool
 
-    tool = get_long_press_on_tool(ctx=ctx)
+    tool = get_swipe_tool(ctx=ctx)
     command_output: Command = tool.invoke(
         {
             "name": tool.name,
@@ -693,11 +693,18 @@ if __name__ == "__main__":
             "id": uuid.uuid4().hex,
             "args": {
                 "agent_thought": "",
-                "selector_request": {
-                    "percentages": {
-                        "x_percent": 20,
-                        "y_percent": 28,
+                "swipe_request": {
+                    "swipe_mode": {
+                        "start": {
+                            "x_percent": 0,
+                            "y_percent": 0.5,
+                        },
+                        "end": {
+                            "x_percent": 1,
+                            "y_percent": 0.5,
+                        },
                     },
+                    "duration": 400,
                 },
                 "state": dummy_state,
             },
