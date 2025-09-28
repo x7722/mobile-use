@@ -1,17 +1,19 @@
+from typing import Annotated
+
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 from langchain_core.tools.base import InjectedToolCallId
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
+
 from minitap.mobile_use.constants import EXECUTOR_MESSAGES_KEY
 from minitap.mobile_use.context import MobileUseContext
-from minitap.mobile_use.controllers.types import WaitTimeout
 from minitap.mobile_use.controllers.mobile_command_controller import (
     wait_for_animation_to_end as wait_for_animation_to_end_controller,
 )
+from minitap.mobile_use.controllers.types import WaitTimeout
 from minitap.mobile_use.graph.state import State
 from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
-from typing import Annotated
 
 
 def get_wait_for_animation_to_end_tool(ctx: MobileUseContext):
@@ -31,7 +33,7 @@ def get_wait_for_animation_to_end_tool(ctx: MobileUseContext):
 
         Example:
             - waitForAnimationToEnd
-            - waitForAnimationToEnd: { timeout: 5000 }
+            - waitForAnimationToEnd: { timeout: "5000" }
         """
         output = wait_for_animation_to_end_controller(ctx=ctx, timeout=timeout)
         has_failed = output is not None
