@@ -29,7 +29,5 @@ async def hopper(
 
     llm = get_llm(ctx=ctx, name="hopper", is_utils=True, temperature=0)
     structured_llm = llm.with_structured_output(HopperOutput)
-    response: HopperOutput = await invoke_llm_with_timeout_message(
-        structured_llm.ainvoke(messages), agent_name="Hopper"
-    )  # type: ignore
+    response: HopperOutput = await invoke_llm_with_timeout_message(structured_llm.ainvoke(messages))  # type: ignore
     return response

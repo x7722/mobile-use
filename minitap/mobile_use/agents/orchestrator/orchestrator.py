@@ -72,9 +72,7 @@ class OrchestratorNode:
 
         llm = get_llm(ctx=self.ctx, name="orchestrator", temperature=1)
         llm = llm.with_structured_output(OrchestratorOutput)
-        response: OrchestratorOutput = await invoke_llm_with_timeout_message(
-            llm.ainvoke(messages), agent_name="Orchestrator"
-        )  # type: ignore
+        response: OrchestratorOutput = await invoke_llm_with_timeout_message(llm.ainvoke(messages))  # type: ignore
         if response.needs_replaning:
             thoughts = [response.reason]
             state.subgoal_plan = fail_current_subgoal(state.subgoal_plan)

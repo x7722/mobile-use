@@ -28,7 +28,6 @@ user_messages_logger = get_logger(__name__)
 
 async def invoke_llm_with_timeout_message[T](
     llm_call: Coroutine[Any, Any, T],
-    agent_name: str,
     timeout_seconds: int = 10,
 ) -> T:
     """
@@ -36,7 +35,6 @@ async def invoke_llm_with_timeout_message[T](
 
     Args:
         llm_call: The coroutine of the LLM call to execute.
-        agent_name: The name of the agent making the call (for the message).
         timeout_seconds: The delay in seconds before displaying the message.
 
     Returns:
@@ -99,14 +97,18 @@ def get_openai_llm(
     return client
 
 
-def get_openrouter_llm(model_name: str, temperature: float = 1):
+def get_openrouter_llm(model_name: str, temperature: float = 1, providers_order: list[str] = []):
     assert settings.OPEN_ROUTER_API_KEY is not None
+    extra_body: dict = {"provider": {"sort": "throughput"}}
+    if providers_order:
+        extra_body["provider"]["order"] = providers_order
+        extra_body["provider"]["only"] = providers_order
     client = ChatOpenAI(
         model=model_name,
         temperature=temperature,
         api_key=settings.OPEN_ROUTER_API_KEY,
         base_url="https://openrouter.ai/api/v1",
-        extra_body={"provider": {"sort": "throughput"}},
+        extra_body=extra_body,
     )
     return client
 
@@ -195,6 +197,8 @@ def get_llm(
     elif llm.provider == "vertexai":
         return get_vertex_llm(llm.model, temperature)
     elif llm.provider == "openrouter":
+        if name == "cortex":
+            return get_openrouter_llm(llm.model, temperature, ["groq", "cerebras"])
         return get_openrouter_llm(llm.model, temperature)
     elif llm.provider == "xai":
         return get_grok_llm(llm.model, temperature)

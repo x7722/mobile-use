@@ -52,9 +52,7 @@ class PlannerNode:
 
         llm = get_llm(ctx=self.ctx, name="planner")
         llm = llm.with_structured_output(PlannerOutput)
-        response: PlannerOutput = await invoke_llm_with_timeout_message(
-            llm.ainvoke(messages), agent_name="Planner"
-        )  # type: ignore
+        response: PlannerOutput = await invoke_llm_with_timeout_message(llm.ainvoke(messages))  # type: ignore
         subgoals_plan = [
             Subgoal(
                 id=generate_id(),

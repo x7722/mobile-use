@@ -63,9 +63,7 @@ class ExecutorNode:
             llm_bind_tools_kwargs["parallel_tool_calls"] = True
 
         llm = llm.bind_tools(**llm_bind_tools_kwargs)
-        response = await invoke_llm_with_timeout_message(
-            llm.ainvoke(messages), agent_name="Executor"
-        )
+        response = await invoke_llm_with_timeout_message(llm.ainvoke(messages))
         return state.sanitize_update(
             ctx=self.ctx,
             update={

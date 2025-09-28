@@ -62,9 +62,7 @@ async def outputter(
         if schema is not None:
             structured_llm = llm.with_structured_output(schema)
 
-    response = await invoke_llm_with_timeout_message(
-        structured_llm.ainvoke(messages), agent_name="Outputter"
-    )  # type: ignore
+    response = await invoke_llm_with_timeout_message(structured_llm.ainvoke(messages))
     if isinstance(response, BaseModel):
         if output_config.output_description and hasattr(response, "content"):
             response = json.loads(response.content)  # type: ignore

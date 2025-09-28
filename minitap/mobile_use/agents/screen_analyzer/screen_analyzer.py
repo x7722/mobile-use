@@ -32,7 +32,5 @@ async def screen_analyzer(ctx: MobileUseContext, prompt: str):
     ]
 
     llm = get_llm(ctx=ctx, name="screen_analyzer", is_utils=True, temperature=1)
-    response = await invoke_llm_with_timeout_message(
-        llm.ainvoke(messages), agent_name="screen_analyzer"
-    )  # type: ignore
+    response = await invoke_llm_with_timeout_message(llm.ainvoke(messages))
     return response.content

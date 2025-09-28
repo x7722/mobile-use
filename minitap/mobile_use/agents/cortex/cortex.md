@@ -163,7 +163,7 @@ If you decide to act, output a **valid JSON stringified structured set of instru
 
 **Important Notes:**
 
-- Your reasoning should be captured in the appropriate reason fields (`decisions_reason` or `goals_completion_reason`) based on what actions you're taking.
+- Your reasoning should be captured in the appropriate reason fields (`decisions_reason` and `goals_completion_reason`) based on what actions you're taking - you can do both.
 - Always analyze previous decision patterns and outcomes when formulating your reasoning to avoid repeating failed approaches.
 - When performing actions without definite endings (like scrolling), mention checkpoints in your reasoning: "Swiping up to reveal more recipes - last seen recipe was <ID or NAME>, stop when no more".
 
