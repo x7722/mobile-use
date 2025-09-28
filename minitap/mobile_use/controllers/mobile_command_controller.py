@@ -30,8 +30,8 @@ from minitap.mobile_use.utils.errors import ControllerErrors
 from minitap.mobile_use.utils.logger import get_logger
 from minitap.mobile_use.utils.ui_hierarchy import (
     find_element_by_resource_id,
-    get_bounds_for_element,
     find_element_by_text,
+    get_bounds_for_element,
 )
 
 logger = get_logger(__name__)
@@ -333,10 +333,10 @@ def swipe_android(
         x_mid = ctx.device.device_width // 2
         y_mid = ctx.device.device_height // 2
 
-        top_mid = CoordinatesSelectorRequest(x=x_mid, y=0)
-        bottom_mid = CoordinatesSelectorRequest(x=x_mid, y=ctx.device.device_height - 1)
-        left_mid = CoordinatesSelectorRequest(x=0, y=y_mid)
-        right_mid = CoordinatesSelectorRequest(x=ctx.device.device_width - 1, y=y_mid)
+        top_mid = CoordinatesSelectorRequest(x=x_mid, y=100)
+        bottom_mid = CoordinatesSelectorRequest(x=x_mid, y=ctx.device.device_height - 100)
+        left_mid = CoordinatesSelectorRequest(x=100, y=y_mid)
+        right_mid = CoordinatesSelectorRequest(x=ctx.device.device_width - 100, y=y_mid)
 
         if mode == "UP":
             swipe_coords = SwipeStartEndCoordinatesRequest(start=bottom_mid, end=top_mid)
@@ -394,13 +394,9 @@ def input_text(ctx: MobileUseContext, text: str, dry_run: bool = False):
     Inputs text on the device, correctly handling special characters like newlines and tabs.
     Prioritizes direct ADB commands for performance and falls back to Maestro.
     """
-    if dry_run:
-        logger.info(f"[DRY RUN] Would have inputted complex text: '{text}'")
-        return None
-
     if ctx.adb_client:
         try:
-            logger.info(f"Inputting complex text via direct ADB: '{text}'")
+            logger.info(f"Inputting text via direct ADB: '{text}'")
 
             lines = text.split("\n")
 

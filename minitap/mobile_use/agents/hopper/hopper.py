@@ -9,13 +9,8 @@ from minitap.mobile_use.services.llm import get_llm, invoke_llm_with_timeout_mes
 
 
 class HopperOutput(BaseModel):
-    step: str = Field(
-        description=(
-            "The step that has been done, must be a valid one following the "
-            "current steps and the current goal to achieve."
-        )
-    )
-    output: str = Field(description="The interesting data extracted from the input data.")
+    reason: str | None = Field(description=("Your reason for the action"))
+    output: str | None = Field(description="The interesting data extracted from the input data.")
 
 
 async def hopper(
@@ -37,7 +32,4 @@ async def hopper(
     response: HopperOutput = await invoke_llm_with_timeout_message(
         structured_llm.ainvoke(messages), agent_name="Hopper"
     )  # type: ignore
-    return HopperOutput(
-        step=response.step,
-        output=response.output,
-    )
+    return response

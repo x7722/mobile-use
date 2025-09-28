@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Annotated, Literal
-from pydantic import BaseModel, BeforeValidator, ConfigDict
+
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 
 class ScreenDataResponse(BaseModel):
@@ -28,8 +29,8 @@ class PercentagesSelectorRequest(BaseModel):
     50%,50%      # center
     """
 
-    x_percent: int
-    y_percent: int
+    x_percent: int = Field(description="X percentage (0-100)")
+    y_percent: int = Field(description="Y percentage (0-100)")
 
     def to_str(self):
         return f"{self.x_percent}%, {self.y_percent}%"

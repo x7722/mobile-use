@@ -47,9 +47,9 @@ def _controller_input_text(ctx: MobileUseContext, text: str) -> InputResult:
     return InputResult(ok=False, error=str(controller_out))
 
 
-def get_input_text_tool(ctx: MobileUseContext):
+def get_focus_and_input_text_tool(ctx: MobileUseContext):
     @tool
-    def input_text(
+    def focus_and_input_text(
         tool_call_id: Annotated[str, InjectedToolCallId],
         state: Annotated[State, InjectedState],
         agent_thought: str,
@@ -75,7 +75,7 @@ def get_input_text_tool(ctx: MobileUseContext):
             error_message = "Failed to focus the text input element before typing."
             tool_message = ToolMessage(
                 tool_call_id=tool_call_id,
-                content=input_text_wrapper.on_failure_fn(text, error_message),
+                content=focus_and_input_text_wrapper.on_failure_fn(text, error_message),
                 additional_kwargs={"error": error_message},
                 status="error",
             )
@@ -108,14 +108,14 @@ def get_input_text_tool(ctx: MobileUseContext):
                 text_input_content = get_element_text(element)
 
         agent_outcome = (
-            input_text_wrapper.on_success_fn(
+            focus_and_input_text_wrapper.on_success_fn(
                 text_to_type=text,
                 text_from_resource_id=text_input_content,
                 target_resource_id=target.resource_id,
                 focus_method=focus_method,
             )
             if result.ok
-            else input_text_wrapper.on_failure_fn(text_to_type=text, error=result.error)
+            else focus_and_input_text_wrapper.on_failure_fn(text_to_type=text, error=result.error)
         )
 
         tool_message = ToolMessage(
@@ -136,7 +136,7 @@ def get_input_text_tool(ctx: MobileUseContext):
             ),
         )
 
-    return input_text
+    return focus_and_input_text
 
 
 def _on_input_success(text_to_type, text_from_resource_id, target_resource_id, focus_method):
@@ -150,12 +150,12 @@ def _on_input_success(text_to_type, text_from_resource_id, target_resource_id, f
     else:
         return (
             f"Typed {repr(text_to_type)} using {focus_method}."
-            + "Should now verify before moving forward."
+            + " Should now verify before moving forward."
         )
 
 
-input_text_wrapper = ToolWrapper(
-    tool_fn_getter=get_input_text_tool,
+focus_and_input_text_wrapper = ToolWrapper(
+    tool_fn_getter=get_focus_and_input_text_tool,
     on_success_fn=_on_input_success,
     on_failure_fn=lambda text, error: f"Failed to input text {repr(text)}. Reason: {error}",
 )

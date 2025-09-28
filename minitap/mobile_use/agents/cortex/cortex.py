@@ -89,16 +89,23 @@ class CortexNode:
             "null",
             "",
         ]
-
         has_subgoals_to_complete = (
             response.complete_subgoals_by_ids is not None
             and len(response.complete_subgoals_by_ids) > 0
         )
 
+        combined_thought_parts = []
+        if has_decisions:
+            combined_thought_parts.append(f"Decision reasoning: {response.decisions_reason}")
+        if has_subgoals_to_complete:
+            combined_thought_parts.append(
+                f"Subgoal completion reasoning: {response.goals_completion_reason}"
+            )
+
         return state.sanitize_update(
             ctx=self.ctx,
             update={
-                "agents_thoughts": [response.agent_thought],
+                "agents_thoughts": combined_thought_parts,
                 "structured_decisions": response.decisions if has_decisions else None,
                 "complete_subgoals_by_ids": response.complete_subgoals_by_ids
                 if has_subgoals_to_complete
@@ -109,7 +116,7 @@ class CortexNode:
                 "device_date": None,
                 # Executor related fields
                 EXECUTOR_MESSAGES_KEY: [RemoveMessage(id=REMOVE_ALL_MESSAGES)],
-                "cortex_last_thought": response.agent_thought,
+                "cortex_last_thought": response.decisions_reason,
             },
             agent="cortex",
         )

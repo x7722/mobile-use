@@ -106,11 +106,7 @@ def get_openrouter_llm(model_name: str, temperature: float = 1):
         temperature=temperature,
         api_key=settings.OPEN_ROUTER_API_KEY,
         base_url="https://openrouter.ai/api/v1",
-        extra_body={
-            "provider": {
-                "sort": "throughput",
-            }
-        },
+        extra_body={"provider": {"sort": "throughput"}},
     )
     return client
 

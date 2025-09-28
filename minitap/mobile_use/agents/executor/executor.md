@@ -25,7 +25,7 @@ and your previous actions, you must:
 "I'm tapping on the chat item labeled 'Alice' to open the conversation."
 
 ```json
-  "[{\"tool_name\": \"tap\", \"arguments\": {\"target\": {\"resource_id\": \"com.whatsapp:id/conversation_item\", \"resource_id_index\": 0, \"text\": \"Alice\", \"text_index\": 0, \"coordinates\": {\"x\": 0, \"y\": 350, \"width\": 1080, \"height\": 80}}}}]"
+"[{\"tool_name\": \"tap\", \"arguments\": {\"target\": {\"resource_id\": \"com.whatsapp:id/conversation_item\", \"resource_id_index\": 0, \"text\": \"Alice\", \"text_index\": 0, \"coordinates\": {\"x\": 0, \"y\": 350, \"width\": 1080, \"height\": 80}}}}]"
 ```
 
 **→ Executor Action**:
@@ -53,6 +53,7 @@ Call the `tap_on_element` tool with:
 When using the `input_text` tool:
 
 - **Provide all available information** in the target object to identify text input element
+
   - `resource_id`: The resource ID of the text input element (when available)
   - `resource_id_index`: The zero-based index of the specific resource ID you are targeting (when available)
   - `text`: The current text content of the text input element (when available)
@@ -65,15 +66,15 @@ When using the `input_text` tool:
   2. **Move the cursor to the end** of the existing text
   3. **Then type the new text**
 
-- **Important**: Special characters and markdown-like escape sequences (e.g., \n, \t, *, _) are not interpreted. For example, typing \n will insert the literal characters \ and n, not a line break.
+- **Important**: Special characters and markdown-like escape sequences (e.g., \n, \t, \*, \_) are not interpreted. For example, typing \n will insert the literal characters \ and n, not a line break.
 
 #### 🔄 Text Clearing Best Practice
 
-When you need to completely clear text from an input field, always use the clear_text tool with the correct resource_id.
+When you need to completely clear text from an input field, always use the focus_and_clear_text tool with the correct resource_id.
 
 This tool automatically takes care of focusing the element (if needed), and ensuring the field is fully emptied.
 
-Only and if only the clear_text tool fails to clear the text, try to long press the input, select all, and call erase_one_char.
+Only and if only the focus_and_clear_text tool fails to clear the text, try to long press the input, select all, and call erase_one_char.
 
 #### 🔁 Final Notes
 

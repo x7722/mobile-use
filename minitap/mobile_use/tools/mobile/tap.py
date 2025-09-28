@@ -8,13 +8,13 @@ from langgraph.types import Command
 
 from minitap.mobile_use.constants import EXECUTOR_MESSAGES_KEY
 from minitap.mobile_use.context import MobileUseContext
+from minitap.mobile_use.controllers.mobile_command_controller import tap as tap_controller
 from minitap.mobile_use.controllers.types import (
     CoordinatesSelectorRequest,
     IdSelectorRequest,
     SelectorRequestWithCoordinates,
     TextSelectorRequest,
 )
-from minitap.mobile_use.controllers.mobile_command_controller import tap as tap_controller
 from minitap.mobile_use.graph.state import State
 from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
 from minitap.mobile_use.tools.types import Target
@@ -41,7 +41,7 @@ def get_tap_tool(ctx: MobileUseContext):
         output = {
             "error": "No valid selector provided or all selectors failed."
         }  # Default to failure
-        latest_selector_info = "N/A"
+        latest_selector_info: str | None = None
 
         # 1. Try with coordinates
         if target.coordinates:
@@ -150,7 +150,9 @@ def get_tap_tool(ctx: MobileUseContext):
 
 tap_wrapper = ToolWrapper(
     tool_fn_getter=get_tap_tool,
-    on_success_fn=lambda selector_info: f"Tap on element with {selector_info} was successful.",
-    on_failure_fn=lambda selector_info: "Failed to tap on element. "
-    + f"Last attempt was with {selector_info}.",
+    on_success_fn=lambda selector_info: "Tap on element"
+    + (f" with {selector_info}" if selector_info else "")
+    + " was successful.",
+    on_failure_fn=lambda selector_info: "Failed to tap on element."
+    + (f" Last attempt was with {selector_info}." if selector_info else ""),
 )
