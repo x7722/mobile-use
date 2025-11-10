@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from minitap.mobile_use.context import MobileUseContext
 from minitap.mobile_use.controllers.mobile_command_controller import (
     CoordinatesSelectorRequest,
@@ -119,9 +121,12 @@ def move_cursor_to_end_if_bounds(
     return None
 
 
-def focus_element_if_needed(ctx: MobileUseContext, target: Target) -> bool:
+def focus_element_if_needed(
+    ctx: MobileUseContext, target: Target
+) -> Literal["resource_id", "coordinates", "text"] | None:
     """
     Ensures the element is focused, with a sanity check to prevent trusting misleading IDs.
+    Returns how the focus was achieved, or None if it failed.
     """
     rich_hierarchy = ctx.hw_bridge_client.get_rich_hierarchy()
     elt_from_id = None
@@ -159,7 +164,7 @@ def focus_element_if_needed(ctx: MobileUseContext, target: Target) -> bool:
             )
         if elt_from_id and is_element_focused(elt_from_id):
             logger.debug(f"Text input is focused: {target.resource_id}")
-            return True
+            return "resource_id"
         logger.warning(f"Failed to focus using resource_id='{target.resource_id}'. Fallback...")
 
     if target.coordinates:
@@ -171,7 +176,7 @@ def focus_element_if_needed(ctx: MobileUseContext, target: Target) -> bool:
             ),
         )
         logger.debug(f"Tapped on coordinates ({relative_point.x}, {relative_point.y}) to focus.")
-        return True
+        return "coordinates"
 
     if target.text:
         text_elt = find_element_by_text(rich_hierarchy, target.text, index=target.text_index)
@@ -188,9 +193,9 @@ def focus_element_if_needed(ctx: MobileUseContext, target: Target) -> bool:
                     ),
                 )
                 logger.debug(f"Tapped on text element '{target.text}' to focus.")
-                return True
+                return "text"
 
     logger.error(
         "Failed to focus element. No valid locator (resource_id, coordinates, or text) succeeded."
     )
-    return False
+    return None

@@ -18,8 +18,9 @@ from minitap.mobile_use.controllers.mobile_command_controller import (
     long_press_on as long_press_on_controller,
 )
 from minitap.mobile_use.graph.state import State
-from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
+from minitap.mobile_use.tools.names import ToolName
 from minitap.mobile_use.tools.types import Target
+from minitap.mobile_use.tools.wrapper import ToolWrapper
 from minitap.mobile_use.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -171,6 +172,7 @@ def get_long_press_on_tool(ctx: MobileUseContext) -> BaseTool:
 
 
 long_press_on_wrapper = ToolWrapper(
+    tool_name=ToolName.LONG_PRESS_ON,
     tool_fn_getter=get_long_press_on_tool,
     on_success_fn=lambda selector_info: (
         f"Long press on element with {selector_info} was successful."

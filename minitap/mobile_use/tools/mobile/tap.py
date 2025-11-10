@@ -16,8 +16,9 @@ from minitap.mobile_use.controllers.mobile_command_controller import (
 )
 from minitap.mobile_use.controllers.mobile_command_controller import tap as tap_controller
 from minitap.mobile_use.graph.state import State
-from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
+from minitap.mobile_use.tools.names import ToolName
 from minitap.mobile_use.tools.types import Target
+from minitap.mobile_use.tools.wrapper import ToolWrapper
 from minitap.mobile_use.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -150,6 +151,7 @@ def get_tap_tool(ctx: MobileUseContext) -> BaseTool:
 
 
 tap_wrapper = ToolWrapper(
+    tool_name=ToolName.TAP,
     tool_fn_getter=get_tap_tool,
     on_success_fn=lambda selector_info: f"Tap on element with {selector_info} was successful.",
     on_failure_fn=lambda selector_info: "Failed to tap on element. "

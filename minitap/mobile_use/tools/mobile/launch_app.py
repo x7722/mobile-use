@@ -14,7 +14,8 @@ from minitap.mobile_use.controllers.mobile_command_controller import (
 )
 from minitap.mobile_use.controllers.platform_specific_commands_controller import list_packages
 from minitap.mobile_use.graph.state import State
-from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
+from minitap.mobile_use.tools.names import ToolName
+from minitap.mobile_use.tools.wrapper import ToolWrapper
 
 
 async def find_package(ctx: MobileUseContext, app_name: str) -> str | None:
@@ -81,6 +82,7 @@ def get_launch_app_tool(ctx: MobileUseContext):
 
 
 launch_app_wrapper = ToolWrapper(
+    tool_name=ToolName.LAUNCH_APP,
     tool_fn_getter=get_launch_app_tool,
     on_success_fn=lambda app_name: f"App '{app_name}' launched successfully.",
     on_failure_fn=lambda app_name, error: f"Failed to launch app '{app_name}': {error}",

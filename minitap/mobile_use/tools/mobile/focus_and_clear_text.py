@@ -14,9 +14,10 @@ from minitap.mobile_use.controllers.mobile_command_controller import (
 )
 from minitap.mobile_use.controllers.mobile_command_controller import get_screen_data
 from minitap.mobile_use.graph.state import State
-from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
+from minitap.mobile_use.tools.names import ToolName
 from minitap.mobile_use.tools.types import Target
 from minitap.mobile_use.tools.utils import focus_element_if_needed, move_cursor_to_end_if_bounds
+from minitap.mobile_use.tools.wrapper import ToolWrapper
 from minitap.mobile_use.utils.logger import get_logger
 from minitap.mobile_use.utils.ui_hierarchy import (
     find_element_by_resource_id,
@@ -87,10 +88,11 @@ class TextClearer:
         self,
         target: Target,
     ) -> bool:
-        if not focus_element_if_needed(
+        focus_method = focus_element_if_needed(
             ctx=self.ctx,
             target=target,
-        ):
+        )
+        if focus_method is None:
             return False
 
         move_cursor_to_end_if_bounds(
@@ -300,6 +302,7 @@ def _format_failure_message(output: str | None) -> str:
 
 
 focus_and_clear_text_wrapper = ToolWrapper(
+    tool_name=ToolName.FOCUS_AND_CLEAR_TEXT,
     tool_fn_getter=get_focus_and_clear_text_tool,
     on_success_fn=_format_success_message,
     on_failure_fn=_format_failure_message,

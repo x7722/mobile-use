@@ -13,7 +13,8 @@ from minitap.mobile_use.controllers.mobile_command_controller import (
     wait_for_delay as wait_for_delay_controller,
 )
 from minitap.mobile_use.graph.state import State
-from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
+from minitap.mobile_use.tools.names import ToolName
+from minitap.mobile_use.tools.wrapper import ToolWrapper
 
 MAX_DELAY_MS = 60000
 
@@ -78,6 +79,7 @@ def get_wait_for_delay_tool(ctx: MobileUseContext):
 
 
 wait_for_delay_wrapper = ToolWrapper(
+    tool_name=ToolName.WAIT_FOR_DELAY,
     tool_fn_getter=get_wait_for_delay_tool,
     on_success_fn=lambda delay: f"Successfully waited for {delay} milliseconds.",
     on_failure_fn=lambda: "Failed to wait for delay.",

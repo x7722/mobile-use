@@ -18,7 +18,8 @@ from minitap.mobile_use.controllers.types import (
     SwipeStartEndPercentagesRequest,
 )
 from minitap.mobile_use.graph.state import State
-from minitap.mobile_use.tools.tool_wrapper import CompositeToolWrapper
+from minitap.mobile_use.tools.names import ToolName
+from minitap.mobile_use.tools.wrapper import CompositeToolWrapper
 
 
 def get_swipe_tool(ctx: MobileUseContext) -> BaseTool:
@@ -126,6 +127,7 @@ def get_composite_swipe_tools(ctx: MobileUseContext) -> list[BaseTool]:
 
 
 swipe_wrapper = CompositeToolWrapper(
+    tool_name=ToolName.SWIPE,
     tool_fn_getter=get_swipe_tool,
     composite_tools_fn_getter=get_composite_swipe_tools,
     on_success_fn=lambda: "Swipe is successful.",

@@ -10,7 +10,8 @@ from minitap.mobile_use.constants import EXECUTOR_MESSAGES_KEY
 from minitap.mobile_use.context import MobileUseContext
 from minitap.mobile_use.controllers.mobile_command_controller import stop_app as stop_app_controller
 from minitap.mobile_use.graph.state import State
-from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
+from minitap.mobile_use.tools.names import ToolName
+from minitap.mobile_use.tools.wrapper import ToolWrapper
 
 
 def get_stop_app_tool(ctx: MobileUseContext):
@@ -54,6 +55,7 @@ def get_stop_app_tool(ctx: MobileUseContext):
 
 
 stop_app_wrapper = ToolWrapper(
+    tool_name=ToolName.STOP_APP,
     tool_fn_getter=get_stop_app_tool,
     on_success_fn=lambda package_name: f"App {package_name or 'current'} stopped successfully.",
     on_failure_fn=lambda package_name: f"Failed to stop app {package_name or 'current'}.",

@@ -13,7 +13,8 @@ from minitap.mobile_use.controllers.mobile_command_controller import (
     press_key as press_key_controller,
 )
 from minitap.mobile_use.graph.state import State
-from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
+from minitap.mobile_use.tools.names import ToolName
+from minitap.mobile_use.tools.wrapper import ToolWrapper
 
 
 def get_press_key_tool(ctx: MobileUseContext):
@@ -55,6 +56,7 @@ def get_press_key_tool(ctx: MobileUseContext):
 
 
 press_key_wrapper = ToolWrapper(
+    tool_name=ToolName.PRESS_KEY,
     tool_fn_getter=get_press_key_tool,
     on_success_fn=lambda key: f"Key {key.value} pressed successfully.",
     on_failure_fn=lambda key: f"Failed to press key {key.value}.",

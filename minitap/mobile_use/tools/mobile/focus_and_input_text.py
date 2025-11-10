@@ -16,9 +16,10 @@ from minitap.mobile_use.controllers.mobile_command_controller import (
     input_text as input_text_controller,
 )
 from minitap.mobile_use.graph.state import State
-from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
+from minitap.mobile_use.tools.names import ToolName
 from minitap.mobile_use.tools.types import Target
 from minitap.mobile_use.tools.utils import focus_element_if_needed, move_cursor_to_end_if_bounds
+from minitap.mobile_use.tools.wrapper import ToolWrapper
 from minitap.mobile_use.utils.logger import get_logger
 from minitap.mobile_use.utils.ui_hierarchy import find_element_by_resource_id, get_element_text
 
@@ -65,8 +66,8 @@ def get_focus_and_input_text_tool(ctx: MobileUseContext):
             text: The text to type.
             target: The target of the text input (if available).
         """
-        focused = focus_element_if_needed(ctx=ctx, target=target)
-        if not focused:
+        focus_method = focus_element_if_needed(ctx=ctx, target=target)
+        if focus_method is None:
             error_message = "Failed to focus the text input element before typing."
             tool_message = ToolMessage(
                 tool_call_id=tool_call_id,
@@ -142,6 +143,7 @@ def _on_input_success(text, text_input_content, text_input_resource_id):
 
 
 focus_and_input_text_wrapper = ToolWrapper(
+    tool_name=ToolName.FOCUS_AND_INPUT_TEXT,
     tool_fn_getter=get_focus_and_input_text_tool,
     on_success_fn=_on_input_success,
     on_failure_fn=lambda text, error: f"Failed to input text {repr(text)}. Reason: {error}",

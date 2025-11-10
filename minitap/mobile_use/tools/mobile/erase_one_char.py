@@ -12,7 +12,8 @@ from minitap.mobile_use.controllers.mobile_command_controller import (
     erase_text as erase_text_controller,
 )
 from minitap.mobile_use.graph.state import State
-from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
+from minitap.mobile_use.tools.names import ToolName
+from minitap.mobile_use.tools.wrapper import ToolWrapper
 
 
 def get_erase_one_char_tool(ctx: MobileUseContext):
@@ -51,6 +52,7 @@ def get_erase_one_char_tool(ctx: MobileUseContext):
 
 
 erase_one_char_wrapper = ToolWrapper(
+    tool_name=ToolName.ERASE_ONE_CHAR,
     tool_fn_getter=get_erase_one_char_tool,
     on_success_fn=lambda: "Erased one character successfully.",
     on_failure_fn=lambda: "Failed to erase one character.",

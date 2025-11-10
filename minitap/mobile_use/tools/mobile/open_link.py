@@ -12,7 +12,8 @@ from minitap.mobile_use.controllers.mobile_command_controller import (
     open_link as open_link_controller,
 )
 from minitap.mobile_use.graph.state import State
-from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
+from minitap.mobile_use.tools.names import ToolName
+from minitap.mobile_use.tools.wrapper import ToolWrapper
 
 
 def get_open_link_tool(ctx: MobileUseContext):
@@ -56,6 +57,7 @@ def get_open_link_tool(ctx: MobileUseContext):
 
 
 open_link_wrapper = ToolWrapper(
+    tool_name=ToolName.OPEN_LINK,
     tool_fn_getter=get_open_link_tool,
     on_success_fn=lambda url: f"Link {url} opened successfully.",
     on_failure_fn=lambda: "Failed to open link.",

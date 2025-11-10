@@ -1,14 +1,17 @@
+from typing import Annotated
+
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 from langchain_core.tools.base import InjectedToolCallId
-from langgraph.types import Command
-from minitap.mobile_use.constants import EXECUTOR_MESSAGES_KEY
-from minitap.mobile_use.controllers.mobile_command_controller import back as back_controller
-from minitap.mobile_use.tools.tool_wrapper import ToolWrapper
-from typing import Annotated
-from minitap.mobile_use.context import MobileUseContext
-from minitap.mobile_use.graph.state import State
 from langgraph.prebuilt import InjectedState
+from langgraph.types import Command
+
+from minitap.mobile_use.constants import EXECUTOR_MESSAGES_KEY
+from minitap.mobile_use.context import MobileUseContext
+from minitap.mobile_use.controllers.mobile_command_controller import back as back_controller
+from minitap.mobile_use.graph.state import State
+from minitap.mobile_use.tools.names import ToolName
+from minitap.mobile_use.tools.wrapper import ToolWrapper
 
 
 def get_back_tool(ctx: MobileUseContext):
@@ -42,6 +45,7 @@ def get_back_tool(ctx: MobileUseContext):
 
 
 back_wrapper = ToolWrapper(
+    tool_name=ToolName.BACK,
     tool_fn_getter=get_back_tool,
     on_success_fn=lambda: "Navigated to the previous screen.",
     on_failure_fn=lambda: "Failed to navigate to the previous screen.",
