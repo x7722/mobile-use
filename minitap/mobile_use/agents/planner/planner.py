@@ -27,11 +27,15 @@ class PlannerNode:
     async def __call__(self, state: State):
         needs_replan = one_of_them_is_failure(state.subgoal_plan)
 
+        current_locked_app_package = (
+            self.ctx.execution_setup.get_locked_app_package() if self.ctx.execution_setup else None
+        )
         system_message = Template(
             Path(__file__).parent.joinpath("planner.md").read_text(encoding="utf-8")
         ).render(
             platform=self.ctx.device.mobile_platform.value,
             executor_tools_list=format_tools_list(ctx=self.ctx, wrappers=EXECUTOR_WRAPPERS_TOOLS),
+            locked_app_package=current_locked_app_package,
         )
         human_message = Template(
             Path(__file__).parent.joinpath("human.md").read_text(encoding="utf-8")
