@@ -68,7 +68,7 @@ Available tools: {{ executor_tools_list }}
 
 | Action | Tool | Notes |
 |--------|------|-------|
-| Open app | `launch_app` | Use app name (e.g., "WhatsApp"). If fails, try app drawer manually |
+| **Open app** | `launch_app` | **ALWAYS use first** with app name (e.g., "WhatsApp"). Only try app drawer manually if launch_app fails. |
 | Open URL | `open_link` | Handles deep links correctly |
 | Type text | `focus_and_input_text` | Focuses + types. Verify if feedback shows empty |
 | Clear text | `focus_and_clear_text` | If fails, try: long press → select all → `erase_one_char` |
