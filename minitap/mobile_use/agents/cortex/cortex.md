@@ -76,6 +76,7 @@ Available tools: {{ executor_tools_list }}
 ### Swipe Physics
 Swipe direction "pushes" the screen: **swipe RIGHT → reveals LEFT page** (and vice versa).
 Default to **percentage-based** swipes. Use coordinates only for precise controls (sliders).
+Memory aid: Swipe RIGHT (low→high x) to see LEFT page. Swipe LEFT (high→low x) to see RIGHT page.
 
 {% if locked_app_package %}
 ---
