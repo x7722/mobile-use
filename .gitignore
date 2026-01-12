@@ -2,7 +2,13 @@
 __pycache__
 **/mobile-use.egg-info
 .vscode/settings.json
+# Python virtual environments
 .venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
 
 # User config
 llm-config.override.jsonc
